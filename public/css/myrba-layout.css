@@ -1,0 +1,126 @@
+body.embed #main{
+  margin-left:0!important;
+  padding-left:0!important;
+  padding-right:0!important
+}
+body.embed #sidebar,
+body.embed .sidebar-wrapper,
+body.embed header{
+  display:none!important
+}
+body.embed #main .page-heading{
+  padding-left:0!important;
+  padding-right:0!important
+}
+body.embed .page-title{
+  display:none!important
+}
+body.appview #main{
+  margin-left:0!important;
+  padding-left:0!important;
+  padding-right:0!important
+}
+body.appview #sidebar,
+body.appview .sidebar-wrapper,
+body.appview header{
+  display:none!important
+}
+body.appview .page-title{
+  display:none!important
+}
+body.appview #main .page-heading{
+  padding-left:0!important;
+  padding-right:0!important
+}
+body.embed .card{
+  border:0!important;
+  box-shadow:none!important
+}
+body.embed .card .card-body{
+  padding:0!important
+}
+body.appview .card{
+  border:0!important;
+  box-shadow:none!important
+}
+body.appview .card .card-body{
+  padding:10px!important
+}
+
+:root{
+  --hub-offset: 210px
+}
+body.appview{
+  --hub-offset: 90px
+}
+.hub-page{
+  overflow-x:hidden
+}
+.hub-flex{
+  display:flex;
+  flex-direction:column;
+  height:calc(100vh - var(--hub-offset));
+  min-height:260px;
+  width:100%
+}
+@supports (height: 100dvh){
+  .hub-flex{
+    height:calc(100dvh - var(--hub-offset))
+  }
+}
+.hub-tabs{
+  flex:0 0 auto;
+  flex-wrap:nowrap;
+  overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling:touch
+}
+body.appview .hub-tabs{
+  position:sticky;
+  top:0;
+  z-index:20;
+  background:var(--bs-body-bg);
+  padding-top:env(safe-area-inset-top);
+  margin-bottom:.25rem!important
+}
+.hub-tabs .nav-link{
+  white-space:nowrap
+}
+.hub-iframe{
+  width:100%;
+  border:0;
+  flex:1 1 auto;
+  min-height:0;
+  display:block;
+  background:transparent
+}
+@media (max-width: 768px){
+  :root{
+    --hub-offset: 140px
+  }
+  body.appview{
+    --hub-offset: 70px
+  }
+  body.embed #main .page-heading{
+    padding:10px!important
+  }
+  body.appview #main .page-heading{
+    padding:10px!important
+  }
+  body.appview .card .card-body{
+    padding:8px!important
+  }
+  body:not(.embed):not(.appview) #main .page-heading{
+    padding:12px!important
+  }
+  body:not(.embed):not(.appview) .card .card-body{
+    padding:12px!important
+  }
+  .hub-iframe{
+    width:100%
+  }
+  .hub-tabs .nav-link{
+    padding:.45rem .65rem;
+    font-size:.9rem
+  }
+}
