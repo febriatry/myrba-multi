@@ -21,6 +21,7 @@ class Tenant extends Model
         'tripay_api_key',
         'tripay_merchant_code',
         'tripay_private_key',
+        'tripay_provider_mode',
     ];
 
     protected $casts = [

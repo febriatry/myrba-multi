@@ -15,6 +15,7 @@ class TenantPlanController extends Controller
     public function index()
     {
         $plans = TenantPlan::query()->orderBy('id')->get();
+
         return view('platform.plans.index', compact('plans'));
     }
 
@@ -36,6 +37,7 @@ class TenantPlanController extends Controller
             'max_users' => 'nullable|integer|min:1',
             'max_pelanggans' => 'nullable|integer|min:1',
             'max_wa_messages_monthly' => 'nullable|integer|min:1',
+            'wa_free_messages_monthly' => 'nullable|integer|min:0',
             'wa_price_per_message' => 'nullable|numeric|min:0',
         ]);
 
@@ -51,6 +53,9 @@ class TenantPlanController extends Controller
             if (isset($validated[$k]) && is_numeric($validated[$k])) {
                 $quota[$k] = (int) $validated[$k];
             }
+        }
+        if (isset($validated['wa_free_messages_monthly']) && is_numeric($validated['wa_free_messages_monthly'])) {
+            $quota['wa_free_messages_monthly'] = (int) $validated['wa_free_messages_monthly'];
         }
         if (isset($validated['wa_price_per_message']) && is_numeric($validated['wa_price_per_message'])) {
             $quota['wa_price_per_message'] = (float) $validated['wa_price_per_message'];
@@ -76,7 +81,7 @@ class TenantPlanController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:150',
-            'code' => 'required|string|max:50|alpha_dash|unique:tenant_plans,code,' . $plan->id,
+            'code' => 'required|string|max:50|alpha_dash|unique:tenant_plans,code,'.$plan->id,
             'status' => 'required|string|in:active,inactive',
             'feature_whatsapp' => 'nullable|in:1,0',
             'feature_payment_gateway' => 'nullable|in:1,0',
@@ -85,6 +90,7 @@ class TenantPlanController extends Controller
             'max_users' => 'nullable|integer|min:1',
             'max_pelanggans' => 'nullable|integer|min:1',
             'max_wa_messages_monthly' => 'nullable|integer|min:1',
+            'wa_free_messages_monthly' => 'nullable|integer|min:0',
             'wa_price_per_message' => 'nullable|numeric|min:0',
         ]);
 
@@ -100,6 +106,9 @@ class TenantPlanController extends Controller
             if (isset($validated[$k]) && is_numeric($validated[$k])) {
                 $quota[$k] = (int) $validated[$k];
             }
+        }
+        if (isset($validated['wa_free_messages_monthly']) && is_numeric($validated['wa_free_messages_monthly'])) {
+            $quota['wa_free_messages_monthly'] = (int) $validated['wa_free_messages_monthly'];
         }
         if (isset($validated['wa_price_per_message']) && is_numeric($validated['wa_price_per_message'])) {
             $quota['wa_price_per_message'] = (float) $validated['wa_price_per_message'];
@@ -119,6 +128,7 @@ class TenantPlanController extends Controller
     public function destroy(TenantPlan $plan)
     {
         $plan->delete();
+
         return redirect()->route('platform.plans.index')->with('success', 'Paket tenant berhasil dihapus.');
     }
 }

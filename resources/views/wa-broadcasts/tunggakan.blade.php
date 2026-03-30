@@ -24,6 +24,8 @@
                 <div class="card-body">
                     <form method="POST" action="{{ route('wa-tunggakan.send') }}" class="row g-2 align-items-end">
                         @csrf
+                        <input type="hidden" name="send_mode" id="send-mode" value="all">
+                        <input type="hidden" name="selected_ids" id="selected-ids" value="">
                         <div class="col-12 col-md-4">
                             <label class="form-label">Area Coverage (opsional)</label>
                             <select name="area_id" id="filter-area" class="form-select">
@@ -40,8 +42,8 @@
                         <div class="col-12 col-md-3">
                             <label class="form-label">Target</label>
                             <select name="only_sendable" id="filter-only-sendable" class="form-select">
-                                <option value="1" selected>Hanya yang bisa dikirim</option>
-                                <option value="0">Semua (termasuk tanpa WA)</option>
+                                <option value="0" selected>Semua (sesuai audit)</option>
+                                <option value="1">Hanya yang bisa dikirim</option>
                             </select>
                         </div>
                         <div class="col-12 col-md-3">
@@ -58,7 +60,8 @@
 
                         <div class="col-12 col-md-6 text-end">
                             <button type="button" id="btn-preview" class="btn btn-outline-primary">Preview</button>
-                            <button class="btn btn-primary">Kirim</button>
+                            <button type="submit" class="btn btn-primary" id="btn-send-all">Kirim Sesuai Filter</button>
+                            <button type="submit" class="btn btn-outline-primary" id="btn-send-selected" disabled>Kirim Terpilih (<span id="selected-count">0</span>)</button>
                         </div>
                     </form>
                 </div>
@@ -70,6 +73,9 @@
                         <table class="table table-striped" id="tunggakan-table">
                             <thead>
                                 <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" class="form-check-input" id="select-all">
+                                    </th>
                                     <th style="width: 5%">#</th>
                                     <th>Area</th>
                                     <th>ID Layanan</th>
@@ -96,6 +102,27 @@
 @push('js')
     <script src="https://cdn.jsdelivr.net/combine/npm/datatables.net@1.12.0,npm/datatables.net-bs5@1.12.0"></script>
     <script>
+        const selected = new Set();
+        const selectedCountEl = document.getElementById('selected-count');
+        const selectedIdsEl = document.getElementById('selected-ids');
+        const btnSendSelected = document.getElementById('btn-send-selected');
+        const btnSendAll = document.getElementById('btn-send-all');
+        const sendModeEl = document.getElementById('send-mode');
+        const selectAllEl = document.getElementById('select-all');
+
+        function updateSelectedUi() {
+            const count = selected.size;
+            if (selectedCountEl) selectedCountEl.textContent = String(count);
+            if (btnSendSelected) btnSendSelected.disabled = count < 1;
+            if (selectedIdsEl) selectedIdsEl.value = Array.from(selected).join(',');
+        }
+
+        function clearSelected() {
+            selected.clear();
+            if (selectAllEl) selectAllEl.checked = false;
+            updateSelectedUi();
+        }
+
         const table = $('#tunggakan-table').DataTable({
             processing: true,
             serverSide: true,
@@ -109,6 +136,18 @@
                 }
             },
             columns: [{
+                    data: 'pelanggan_id',
+                    name: 'pelanggans.id',
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type, row) {
+                        const id = String(row.pelanggan_id || '');
+                        if (!id) return '';
+                        const checked = selected.has(id) ? 'checked' : '';
+                        return '<input type="checkbox" class="form-check-input row-select" data-id="' + id + '" ' + checked + '>';
+                    }
+                },
+                {
                     data: 'DT_RowIndex',
                     name: 'DT_RowIndex',
                     orderable: false,
@@ -116,7 +155,7 @@
                 },
                 {
                     data: 'kode_area',
-                    name: 'kode_area',
+                    name: 'area_coverages.kode_area',
                     render: function(data, type, row) {
                         const area = (row.area_nama || '');
                         return (data || '-') + (area ? (' - ' + area) : '');
@@ -124,30 +163,30 @@
                 },
                 {
                     data: 'no_layanan',
-                    name: 'no_layanan'
+                    name: 'pelanggans.no_layanan'
                 },
                 {
                     data: 'nama',
-                    name: 'nama'
+                    name: 'pelanggans.nama'
                 },
                 {
                     data: 'no_wa',
-                    name: 'no_wa',
+                    name: 'pelanggans.no_wa',
                     render: function(data) {
                         return data || '-';
                     }
                 },
                 {
                     data: 'unpaid_count',
-                    name: 'unpaid_count'
+                    name: 'u.unpaid_count'
                 },
                 {
                     data: 'total_tunggakan',
-                    name: 'total_tunggakan'
+                    name: 'u.total_tunggakan'
                 },
                 {
                     data: 'periode_list',
-                    name: 'periode_list',
+                    name: 'u.periode_list',
                     render: function(data) {
                         return data || '-';
                     }
@@ -156,8 +195,54 @@
         });
 
         $('#btn-preview').on('click', function() {
+            clearSelected();
             table.ajax.reload();
         });
+
+        $('#tunggakan-table').on('change', '.row-select', function() {
+            const id = String(this.dataset.id || '');
+            if (!id) return;
+            if (this.checked) selected.add(id); else selected.delete(id);
+            updateSelectedUi();
+        });
+
+        if (selectAllEl) {
+            selectAllEl.addEventListener('change', function() {
+                const checked = !!selectAllEl.checked;
+                $('#tunggakan-table').find('.row-select').each(function() {
+                    const id = String(this.dataset.id || '');
+                    if (!id) return;
+                    this.checked = checked;
+                    if (checked) selected.add(id); else selected.delete(id);
+                });
+                updateSelectedUi();
+            });
+        }
+
+        table.on('draw', function() {
+            if (selectAllEl) selectAllEl.checked = false;
+            $('#tunggakan-table').find('.row-select').each(function() {
+                const id = String(this.dataset.id || '');
+                if (!id) return;
+                this.checked = selected.has(id);
+            });
+            updateSelectedUi();
+        });
+
+        if (btnSendAll) {
+            btnSendAll.addEventListener('click', function() {
+                if (sendModeEl) sendModeEl.value = 'all';
+            });
+        }
+        if (btnSendSelected) {
+            btnSendSelected.addEventListener('click', function(e) {
+                if (selected.size < 1) {
+                    e.preventDefault();
+                    return;
+                }
+                if (sendModeEl) sendModeEl.value = 'selected';
+                updateSelectedUi();
+            });
+        }
     </script>
 @endpush
-

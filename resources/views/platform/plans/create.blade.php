@@ -78,6 +78,10 @@
                     <input type="number" name="max_wa_messages_monthly" class="form-control" value="{{ old('max_wa_messages_monthly') }}" min="1">
                 </div>
                 <div class="col-12 col-md-3">
+                    <label class="form-label">WA Gratis / Bulan (Owner)</label>
+                    <input type="number" name="wa_free_messages_monthly" class="form-control" value="{{ old('wa_free_messages_monthly') }}" min="0">
+                </div>
+                <div class="col-12 col-md-3">
                     <label class="form-label">Harga WA / Pesan</label>
                     <input type="number" name="wa_price_per_message" class="form-control" value="{{ old('wa_price_per_message') }}" min="0" step="0.01">
                 </div>

@@ -12,10 +12,14 @@ class WaMessageStatusLog extends Model
     protected $table = 'wa_message_status_logs';
 
     protected $fillable = [
+        'tenant_id',
         'message_id',
         'recipient_id',
         'status',
         'type',
+        'provider',
+        'billing_mode',
+        'cost_units',
         'status_at',
         'errors',
         'payload',

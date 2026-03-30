@@ -1,19 +1,17 @@
 <?php
 
+use App\Http\Controllers\AuditKeuanganController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\PelangganController;
-use App\Http\Controllers\SettingmikrotikController;
-use App\Http\Controllers\AuditKeuanganController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PlatformWaUsageController;
 use App\Http\Controllers\TagihanController;
-use App\Http\Controllers\PlatformDashboardController;
 use App\Http\Controllers\TenantAdminDashboardController;
-use App\Http\Controllers\TenantPlanController;
-use App\Http\Controllers\TenantPlatformController;
-use App\Http\Controllers\TenantWaController;
 use App\Http\Controllers\TenantPaymentController;
+use App\Http\Controllers\TenantPlanController;
+use App\Http\Controllers\TenantWaController;
 use App\Http\Controllers\WaTunggakanBroadcastController;
+use Illuminate\Support\Facades\Route;
 
 Route::post('/webhooks/github', [\App\Http\Controllers\GitHubWebhookController::class, 'handle'])
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
@@ -64,9 +62,11 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::post('/tenant/payment-settings', [TenantPaymentController::class, 'updateSettings'])->name('tenant.payment.settings.update')->middleware('tenant.feature:payment_gateway');
 
     Route::prefix('platform')->name('platform.')->middleware(['platform.team', 'role:Platform Owner'])->group(function () {
-        Route::get('/', [PlatformDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/', function () {
+            return redirect()->route('platform.plans.index');
+        })->name('dashboard');
         Route::resource('plans', TenantPlanController::class)->except(['show']);
-        Route::resource('tenants', TenantPlatformController::class)->except(['show']);
+        Route::get('wa-usage', [PlatformWaUsageController::class, 'index'])->name('wa-usage.index');
     });
 
     Route::get('/profile', App\Http\Controllers\ProfileController::class)->name('profile');
@@ -75,7 +75,7 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::get('/dashboard/finance-monthly', 'financeMonthly')->name('dashboard.financeMonthly');
         Route::get('/dashboard/invoice-status-monthly', 'invoiceStatusMonthly')->name('dashboard.invoiceStatusMonthly');
     });
-    Route::middleware(['platform.team', 'role:Platform Owner'])->group(function () {
+    Route::middleware(['platform.team', 'role:Platform Operator'])->group(function () {
         Route::get('/wa-config', [\App\Http\Controllers\WaConfigController::class, 'index'])->name('wa-config.index');
         Route::post('/wa-config/toggle-status', [\App\Http\Controllers\WaConfigController::class, 'toggleStatus'])->name('wa-config.toggle-status');
         Route::post('/wa-config/test-connection', [\App\Http\Controllers\WaConfigController::class, 'testConnection'])->name('wa-config.test-connection');
@@ -114,7 +114,6 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::controller(App\Http\Controllers\HotspotprofileController::class)->group(function () {
         Route::delete('deleteProfile/{id}/{name}', 'deleteProfile')->name('hotspotprofiles.deleteProfile');
     });
-
 
     Route::resource('secret-ppps', App\Http\Controllers\SecretPppController::class);
     Route::get('/pppoe-hub', [\App\Http\Controllers\PppoeHubController::class, 'index'])->name('pppoe-hub.index');
@@ -173,8 +172,8 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::get('getTableArea/{id}', 'getTableArea')->name('api.getTableArea');
         Route::get('getTableOdc/{id}', 'getTableOdc')->name('api.getTableOdc');
         Route::get('getTableOdp/{id}', 'getTableOdp')->name('api.getTableOdp');
-        Route::get('api/pelanggan/search',  'searchPelanggan')->name('api.search_pelanggan');
-        Route::get('api/pelanggan/estimasi',  'estimasiPendapatan')->name('api.pelanggan.estimasi');
+        Route::get('api/pelanggan/search', 'searchPelanggan')->name('api.search_pelanggan');
+        Route::get('api/pelanggan/estimasi', 'estimasiPendapatan')->name('api.pelanggan.estimasi');
     });
     Route::get('api/barang/search', [App\Http\Controllers\BarangController::class, 'search'])->name('api.search_barang');
 
@@ -211,9 +210,16 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('finance-bank', [App\Http\Controllers\FinanceBankHubController::class, 'index'])->name('finance-bank.index');
     Route::get('finance-report', [App\Http\Controllers\FinanceReportHubController::class, 'index'])->name('finance-report.index');
     Route::get('finance-hub', [App\Http\Controllers\FinanceHubController::class, 'index'])->name('finance-hub.index');
+    Route::get('finance-setors', [App\Http\Controllers\FinanceSetorController::class, 'index'])->name('finance-setors.index');
+    Route::get('finance-setors/create', [App\Http\Controllers\FinanceSetorController::class, 'create'])->name('finance-setors.create');
+    Route::post('finance-setors', [App\Http\Controllers\FinanceSetorController::class, 'store'])->name('finance-setors.store');
+    Route::post('finance-setors/{id}/approve', [App\Http\Controllers\FinanceSetorController::class, 'approve'])->name('finance-setors.approve');
+    Route::post('finance-setors/{id}/reject', [App\Http\Controllers\FinanceSetorController::class, 'reject'])->name('finance-setors.reject');
+    Route::get('finance-setors/{id}/export-pdf', [App\Http\Controllers\FinanceSetorController::class, 'exportPdf'])->name('finance-setors.exportPdf');
     // Summary route MUST be defined before resource to avoid conflict with 'tagihans/{tagihan}'
     Route::get('/tagihans/summary', [App\Http\Controllers\TagihanController::class, 'summary'])->name('tagihans.summary');
     Route::resource('tagihans', App\Http\Controllers\TagihanController::class);
+    Route::get('/public/tagihan', [App\Http\Controllers\TagihanController::class, 'publicTagihan'])->name('public.tagihan');
     Route::controller(App\Http\Controllers\TagihanController::class)->group(function () {
         Route::get('invoice/{id}', 'invoice')->name('invoice.pdf');
         Route::get('invoice/print/{id}', 'invoice')->name('invoice.print');
@@ -262,7 +268,6 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('transaksi-stock-in/{transaksi}/export-item-pdf', [\App\Http\Controllers\TransaksiStockInController::class, 'exportItemPdf'])->name('transaksi-stock-in.exportItemPdf');
     Route::resource('transaksi-stock-in', \App\Http\Controllers\TransaksiStockInController::class)->except(['destroy'])->parameters(['transaksi-stock-in' => 'transaksi']);
     Route::delete('transaksi-stock-in/{transaksi}', [\App\Http\Controllers\TransaksiStockInController::class, 'destroy'])->name('transaksi-stock-in.destroy');
-
 
     // Stok Keluar
     Route::get('transaksi-stock-out/owner-stock', [\App\Http\Controllers\TransaksiStockOutController::class, 'ownerStock'])->name('transaksi-stock-out.owner-stock');

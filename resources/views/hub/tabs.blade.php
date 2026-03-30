@@ -68,7 +68,27 @@
                     }
                 @endphp
                 @if (!empty($src))
-                    <iframe class="hub-iframe" src="{{ $src }}"></iframe>
+                    @php
+                        $finalSrc = $src;
+                        $tab2 = (string) request()->query('tab2', '');
+                        if ($tab2 !== '') {
+                            $finalSrc .= (str_contains($finalSrc, '?') ? '&' : '?') . 'tab=' . urlencode($tab2);
+                        }
+                        $tab3 = (string) request()->query('tab3', '');
+                        if ($tab3 !== '') {
+                            $finalSrc .= (str_contains($finalSrc, '?') ? '&' : '?') . 'tab2=' . urlencode($tab3);
+                        }
+                        $extra = request()->query();
+                        unset($extra['tab'], $extra['tab2'], $extra['tab3'], $extra['app']);
+                        foreach ($extra as $k => $v) {
+                            if ($v === null || $v === '') continue;
+                            $finalSrc .= (str_contains($finalSrc, '?') ? '&' : '?') . urlencode((string) $k) . '=' . urlencode((string) $v);
+                        }
+                        if ($appMode && !str_contains($finalSrc, 'app=1')) {
+                            $finalSrc .= (str_contains($finalSrc, '?') ? '&' : '?') . 'app=1';
+                        }
+                    @endphp
+                    <iframe class="hub-iframe" src="{{ $finalSrc }}"></iframe>
                 @else
                     <div class="text-muted">{{ __('Tidak ada menu yang bisa ditampilkan.') }}</div>
                 @endif

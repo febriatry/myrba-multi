@@ -11,6 +11,7 @@
                     <p class="text-subtitle text-muted">Daftar paket tenant.</p>
                 </div>
                 <div class="col-12 col-md-4 order-md-2 order-first text-md-end">
+                    <a href="{{ route('platform.wa-usage.index') }}" class="btn btn-outline-secondary">WA Usage</a>
                     <a href="{{ route('platform.plans.create') }}" class="btn btn-primary">Tambah Paket</a>
                 </div>
             </div>
@@ -59,4 +60,3 @@
         </div>
     </section>
 @endsection
-

@@ -1,42 +1,36 @@
 <?php
 
-use App\Models\Olt;
-use Illuminate\Support\Facades\DB;
-use \RouterOS\Exceptions\ConnectException;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Http;
-use App\Models\Pelanggan;
-use App\Models\Tagihan;
-use App\Models\Settingmikrotik;
 use App\Models\AreaCoverage;
-use GuzzleHttp\Promise;
-use GuzzleHttp\Client as Client;
-use \RouterOS\Client as RouterOSClient;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redis;
+use App\Models\BalanceHistory;
 use App\Models\CategoryPemasukan;
-use App\Models\AreaCoverage as ACModel;
+use App\Models\Pelanggan;
+use App\Models\Settingmikrotik;
+use App\Models\Tagihan;
+use App\Models\WaMessageStatusLog;
 use App\Models\WaTemplate;
 use App\Models\WaTemplateMapping;
 use App\Support\WaMessageTrigger;
-use App\Models\BalanceHistory;
-use App\Models\WaMessageStatusLog;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\DB as DBFacade;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\URL;
+use RouterOS\Client as RouterOSClient;
+use RouterOS\Exceptions\ConnectException;
 
-if (!function_exists('is_active_menu')) {
+if (! function_exists('is_active_menu')) {
     function is_active_menu(string|array $route): string
     {
         $activeClass = ' active';
 
         if (is_string($route)) {
-            if (request()->is(substr($route . '*', 1))) {
+            if (request()->is(substr($route.'*', 1))) {
                 return $activeClass;
             }
 
-            if (request()->is(str($route)->slug() . '*')) {
+            if (request()->is(str($route)->slug().'*')) {
                 return $activeClass;
             }
 
@@ -53,11 +47,11 @@ if (!function_exists('is_active_menu')) {
             foreach ($route as $value) {
                 $actualRoute = str($value)->remove(' view')->plural();
 
-                if (request()->is(substr($actualRoute . '*', 1))) {
+                if (request()->is(substr($actualRoute.'*', 1))) {
                     return $activeClass;
                 }
 
-                if (request()->is(str($actualRoute)->slug() . '*')) {
+                if (request()->is(str($actualRoute)->slug().'*')) {
                     return $activeClass;
                 }
 
@@ -80,11 +74,11 @@ function is_active_submenu(string|array $route): string
     $activeClass = ' submenu-open';
 
     if (is_string($route)) {
-        if (request()->is(substr($route . '*', 1))) {
+        if (request()->is(substr($route.'*', 1))) {
             return $activeClass;
         }
 
-        if (request()->is(str($route)->slug() . '*')) {
+        if (request()->is(str($route)->slug().'*')) {
             return $activeClass;
         }
 
@@ -101,11 +95,11 @@ function is_active_submenu(string|array $route): string
         foreach ($route as $value) {
             $actualRoute = str($value)->remove(' view')->plural();
 
-            if (request()->is(substr($actualRoute . '*', 1))) {
+            if (request()->is(substr($actualRoute.'*', 1))) {
                 return $activeClass;
             }
 
-            if (request()->is(str($actualRoute)->slug() . '*')) {
+            if (request()->is(str($actualRoute)->slug().'*')) {
                 return $activeClass;
             }
 
@@ -122,7 +116,6 @@ function is_active_submenu(string|array $route): string
     return '';
 }
 
-
 function formatBytes($bytes, $decimal = null)
 {
     $satuan = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
@@ -131,14 +124,15 @@ function formatBytes($bytes, $decimal = null)
         $bytes /= 1024;
         $i++;
     }
-    return round($bytes, $decimal) . ' ' . $satuan[$i];
+
+    return round($bytes, $decimal).' '.$satuan[$i];
 }
 
 function setRoute(?int $routerId = null)
 {
     $routerId = $routerId ?: (is_numeric(request()->query('router_id')) ? (int) request()->query('router_id') : null);
     $routers = DB::table('settingmikrotiks')
-        ->when(!empty($routerId), function ($q) use ($routerId) {
+        ->when(! empty($routerId), function ($q) use ($routerId) {
             $q->where('id', $routerId);
         })
         ->orderBy('id')
@@ -167,7 +161,7 @@ function myrbaMikrotikCommentTag(): string
 
 function myrbaBuildMikrotikComment(string $message): string
 {
-    return myrbaMikrotikCommentTag() . ' ' . trim($message) . ' @ ' . now()->format('Y-m-d H:i:s');
+    return myrbaMikrotikCommentTag().' '.trim($message).' @ '.now()->format('Y-m-d H:i:s');
 }
 
 function myrbaMergeMikrotikComment(?string $existing, string $message): string
@@ -176,7 +170,7 @@ function myrbaMergeMikrotikComment(?string $existing, string $message): string
     $tag = myrbaMikrotikCommentTag();
 
     if ($existing !== '') {
-        $lines = preg_split("/\\r\\n|\\r|\\n/", $existing) ?: [];
+        $lines = preg_split('/\\r\\n|\\r|\\n/', $existing) ?: [];
         $lines = array_values(array_filter(array_map('trim', $lines), function ($line) use ($tag) {
             return $line !== '' && stripos($line, $tag) === false;
         }));
@@ -187,7 +181,8 @@ function myrbaMergeMikrotikComment(?string $existing, string $message): string
     if ($existing === '') {
         return $appLine;
     }
-    return $existing . "\n" . $appLine;
+
+    return $existing."\n".$appLine;
 }
 
 function setRouteTagihanByPelanggan($router_id)
@@ -202,8 +197,8 @@ function setRouteTagihanByPelanggan($router_id)
                 'port' => (int) $router->port,
             ]);
         } catch (ConnectException $e) {
-            echo $e->getMessage() . PHP_EOL;
-            die();
+            echo $e->getMessage().PHP_EOL;
+            exit();
         }
     }
 }
@@ -221,22 +216,24 @@ function hitungPelanggan()
 function getCustomer()
 {
     $data = DB::table('pelanggans')->where('id', Session::get('id-customer'))->first();
+
     return $data;
 }
 
 function rupiah($angka)
 {
 
-    $hasil_rupiah = "Rp " . number_format($angka, 2, ',', '.');
+    $hasil_rupiah = 'Rp '.number_format($angka, 2, ',', '.');
+
     return $hasil_rupiah;
 }
-
 
 function konversiTanggal($tanggal)
 {
     setlocale(LC_TIME, 'id_ID');
     $date = DateTime::createFromFormat('Y-m', $tanggal);
     $tanggal_indonesia = strftime('%B %Y', $date->getTimestamp());
+
     return $tanggal_indonesia;
 }
 
@@ -245,7 +242,7 @@ function sendNotifWa($api_key, $request, $typePesan, $no_penerima)
     $tenantId = resolveTenantIdForWaRequest($request);
     if (class_exists(\App\Services\TenantEntitlementService::class)) {
         try {
-            if (!\App\Services\TenantEntitlementService::featureEnabled('whatsapp', false)) {
+            if (! \App\Services\TenantEntitlementService::featureEnabled('whatsapp', false)) {
                 return (object) [
                     'status' => false,
                     'message' => 'Fitur WhatsApp tidak tersedia untuk tenant ini.',
@@ -261,10 +258,12 @@ function sendNotifWa($api_key, $request, $typePesan, $no_penerima)
     }
 
     $overrides = null;
+    $billingMode = 'owner';
     if ($tenant && strtolower((string) ($tenant->wa_provider_mode ?? 'developer')) === 'tenant') {
         $apiKey = trim((string) ($tenant->wa_ivosight_api_key ?? ''));
         $baseUrl = trim((string) ($tenant->wa_ivosight_base_url ?? ''));
         if ($apiKey !== '' && $baseUrl !== '') {
+            $billingMode = 'tenant';
             $overrides = [
                 'base_url' => $baseUrl,
                 'api_key' => $apiKey,
@@ -279,6 +278,7 @@ function sendNotifWa($api_key, $request, $typePesan, $no_penerima)
     $typeCandidates = array_map('strtolower', WaMessageTrigger::candidates((string) $typePesan));
     $mustUseTemplate = in_array($normalizedTypePesan, [
         WaMessageTrigger::BILLING_REMINDER,
+        WaMessageTrigger::BILLING_TOTAL,
         WaMessageTrigger::INVOICE_LINK,
         WaMessageTrigger::BROADCAST,
     ], true);
@@ -318,7 +318,7 @@ function sendNotifWa($api_key, $request, $typePesan, $no_penerima)
             }
             foreach ($candidateMappings as $row) {
                 $id = trim((string) ($row->template_id ?? ''));
-                if ($id !== '' && !in_array($id, $templateIds, true)) {
+                if ($id !== '' && ! in_array($id, $templateIds, true)) {
                     $templateIds[] = $id;
                 }
             }
@@ -347,13 +347,15 @@ function sendNotifWa($api_key, $request, $typePesan, $no_penerima)
                             'missing_required' => $build['missing_required'] ?? [],
                         ];
                     }
+
                     continue;
                 }
 
                 $templateRes = $gw->sendTemplate(strval($no_penerima), $templateId, $components);
                 $parsedTemplateRes = parseWaGatewayResponse($templateRes, 'Gagal mengirim template WA');
                 if ($parsedTemplateRes->status === true || $parsedTemplateRes->status === 'true') {
-                    myrbaRecordWaSentLogIfMissing($parsedTemplateRes->message_id ?? null, $normalizedTypePesan, $no_penerima, $parsedTemplateRes->raw ?? null, $tenantId, 'ivosight');
+                    myrbaRecordWaSentLogIfMissing($parsedTemplateRes->message_id ?? null, $normalizedTypePesan, $no_penerima, $parsedTemplateRes->raw ?? null, $tenantId, 'ivosight', $billingMode);
+
                     return $parsedTemplateRes;
                 }
 
@@ -366,13 +368,14 @@ function sendNotifWa($api_key, $request, $typePesan, $no_penerima)
                     $templateResByName = $gw->sendTemplate(strval($no_penerima), $templateNameForGateway, $components);
                     $parsedByName = parseWaGatewayResponse($templateResByName, 'Gagal mengirim template WA');
                     if ($parsedByName->status === true || $parsedByName->status === 'true') {
-                        myrbaRecordWaSentLogIfMissing($parsedByName->message_id ?? null, $normalizedTypePesan, $no_penerima, $parsedByName->raw ?? null, $tenantId, 'ivosight');
+                        myrbaRecordWaSentLogIfMissing($parsedByName->message_id ?? null, $normalizedTypePesan, $no_penerima, $parsedByName->raw ?? null, $tenantId, 'ivosight', $billingMode);
+
                         return $parsedByName;
                     }
                     $lastFailure = $parsedByName;
                 }
 
-                if (!isTemplateNotFoundError($message) && !isTemplateParameterMismatchError($message)) {
+                if (! isTemplateNotFoundError($message) && ! isTemplateParameterMismatchError($message)) {
                     return $lastFailure;
                 }
             }
@@ -380,12 +383,13 @@ function sendNotifWa($api_key, $request, $typePesan, $no_penerima)
             if ($mustUseTemplate) {
                 if ($firstMissingReport !== null) {
                     $detail = '';
-                    if (!empty($firstMissingReport['missing_required'])) {
-                        $detail = ' Missing: ' . implode(', ', array_slice($firstMissingReport['missing_required'], 0, 8));
+                    if (! empty($firstMissingReport['missing_required'])) {
+                        $detail = ' Missing: '.implode(', ', array_slice($firstMissingReport['missing_required'], 0, 8));
                     }
+
                     return (object) [
                         'status' => false,
-                        'message' => 'Mapping template WA belum lengkap untuk message_type: ' . $normalizedTypePesan . ' (template_id: ' . $firstMissingReport['template_id'] . ')' . $detail,
+                        'message' => 'Mapping template WA belum lengkap untuk message_type: '.$normalizedTypePesan.' (template_id: '.$firstMissingReport['template_id'].')'.$detail,
                         'raw' => null,
                     ];
                 }
@@ -399,7 +403,7 @@ function sendNotifWa($api_key, $request, $typePesan, $no_penerima)
         if ($mustUseTemplate) {
             return (object) [
                 'status' => false,
-                'message' => 'Mapping template WA tidak ditemukan untuk message_type: ' . $normalizedTypePesan,
+                'message' => 'Mapping template WA tidak ditemukan untuk message_type: '.$normalizedTypePesan,
                 'raw' => null,
             ];
         }
@@ -421,12 +425,13 @@ function sendNotifWa($api_key, $request, $typePesan, $no_penerima)
     $res = $gw->sendText(strval($no_penerima), $message);
     $parsed = parseWaGatewayResponse($res, 'Gagal mengirim pesan WA');
     if ($parsed->status === true || $parsed->status === 'true') {
-        myrbaRecordWaSentLogIfMissing($parsed->message_id ?? null, $normalizedTypePesan, $no_penerima, $parsed->raw ?? null, $tenantId, 'ivosight');
+        myrbaRecordWaSentLogIfMissing($parsed->message_id ?? null, $normalizedTypePesan, $no_penerima, $parsed->raw ?? null, $tenantId, 'ivosight', $billingMode);
     }
+
     return $parsed;
 }
 
-function myrbaRecordWaSentLogIfMissing($messageId, string $type, $recipientId, $payload = null, ?int $tenantId = null, ?string $provider = null): void
+function myrbaRecordWaSentLogIfMissing($messageId, string $type, $recipientId, $payload = null, ?int $tenantId = null, ?string $provider = null, ?string $billingMode = null): void
 {
     $messageId = trim((string) ($messageId ?? ''));
     if ($messageId === '') {
@@ -446,11 +451,52 @@ function myrbaRecordWaSentLogIfMissing($messageId, string $type, $recipientId, $
         'status' => 'sent',
         'type' => $type,
         'provider' => $provider !== null ? (string) $provider : null,
+        'billing_mode' => $billingMode !== null ? (string) $billingMode : null,
         'cost_units' => 1,
         'status_at' => now(),
         'errors' => null,
         'payload' => is_array($payload) ? $payload : (is_object($payload) ? json_decode(json_encode($payload), true) : null),
     ]);
+}
+
+function getTenantLetterPrefix(int $tenantId): string
+{
+    $n = max(1, $tenantId);
+    if ($n <= 26) {
+        return chr(64 + $n);
+    }
+
+    return 'T';
+}
+
+function formatNoLayananTenant(?string $noLayanan, ?int $tenantId): string
+{
+    $n = trim((string) ($noLayanan ?? ''));
+    $tid = (int) ($tenantId ?? 0);
+    if ($n === '' || $tid <= 0) {
+        return $n;
+    }
+    $p = getTenantLetterPrefix($tid);
+
+    return $p.$n;
+}
+
+function parsePrefixedNoLayanan(string $value): array
+{
+    $s = trim($value);
+    if ($s === '') {
+        return [0, ''];
+    }
+    $first = substr($s, 0, 1);
+    $rest = substr($s, 1);
+    if (preg_match('/^[A-Z]$/i', $first) && preg_match('/^[0-9]+$/', $rest)) {
+        $letter = strtoupper($first);
+        $tenantId = ord($letter) - 64;
+
+        return [$tenantId, $rest];
+    }
+
+    return [0, $s];
 }
 
 function resolveTenantIdForWaRequest($request): int
@@ -470,6 +516,7 @@ function resolveTenantIdForWaRequest($request): int
         if (isset($request->pelanggan_id) && is_numeric($request->pelanggan_id)) {
             try {
                 $val = DBFacade::table('pelanggans')->where('id', (int) $request->pelanggan_id)->value('tenant_id');
+
                 return (int) ($val ?? 1);
             } catch (\Throwable $e) {
             }
@@ -482,7 +529,7 @@ function resolveTenantIdForWaRequest($request): int
 function buildLegacyWaMessage($request, $typePesan): array
 {
     $configPesan = DB::table('config_pesan_notif')->first();
-    if (!$configPesan) {
+    if (! $configPesan) {
         throw new \Exception('Notification message configuration not found');
     }
 
@@ -502,12 +549,13 @@ function buildLegacyWaMessage($request, $typePesan): array
             ];
         case 'tagihan':
             $due = null;
-            if (!empty($request->periode) && !empty($request->tanggal_daftar) && isset($request->jatuh_tempo)) {
+            if (! empty($request->periode) && ! empty($request->tanggal_daftar) && isset($request->jatuh_tempo)) {
                 $due = myrbaTagihanDueDateFromPendaftaran($request->periode, $request->tanggal_daftar, $request->jatuh_tempo);
             }
-            if (empty($due) && !empty($request->tanggal_create_tagihan) && isset($request->jatuh_tempo)) {
+            if (empty($due) && ! empty($request->tanggal_create_tagihan) && isset($request->jatuh_tempo)) {
                 $due = addHari($request->tanggal_create_tagihan, $request->jatuh_tempo);
             }
+
             return [
                 'template' => $configPesan->pesan_notif_tagihan,
                 'replacements' => [
@@ -522,10 +570,11 @@ function buildLegacyWaMessage($request, $typePesan): array
         case 'daftar':
             $packageId = $request->paket_layanan ?? null;
             $paket = null;
-            if (!empty($packageId) && is_numeric($packageId)) {
+            if (! empty($packageId) && is_numeric($packageId)) {
                 $paket = DB::table('packages')->find((int) $packageId);
             }
             $user = Auth::user();
+
             return [
                 'template' => $configPesan->pesan_notif_pendaftaran,
                 'replacements' => [
@@ -563,12 +612,14 @@ function myrbaInvoiceSignedUrl($tagihanId): string
         return '';
     }
     $minutes = (int) (env('INVOICE_SIGNED_TTL_MINUTES') ?: 1440);
+
     return URL::temporarySignedRoute('invoice.signed', now()->addMinutes($minutes), ['id' => (int) $tagihanId]);
 }
 
 function buildWaTemplateComponents($mappings, $request, string $typePesan): array
 {
     $result = buildWaTemplateComponentsReport($mappings, $request, $typePesan);
+
     return $result['components'];
 }
 
@@ -614,6 +665,7 @@ function shouldRetryWaTemplateWithName(string $message): bool
     if ($m === '') {
         return false;
     }
+
     return str_contains($m, 'template name does not exist')
         || str_contains($m, 'template id doest not exist')
         || str_contains($m, 'template id does not exist')
@@ -629,6 +681,7 @@ function isTemplateNotFoundError(string $message): bool
     if ($m === '') {
         return false;
     }
+
     return str_contains($m, 'template id doest not exist')
         || str_contains($m, 'template id does not exist')
         || str_contains($m, 'template name does not exist')
@@ -641,13 +694,14 @@ function isTemplateParameterMismatchError(string $message): bool
     if ($m === '') {
         return false;
     }
+
     return str_contains($m, 'parameter format does not match')
         || str_contains($m, '132012');
 }
 
 function resolveWaTemplateReferenceName($waTemplate): string
 {
-    if (!$waTemplate) {
+    if (! $waTemplate) {
         return '';
     }
 
@@ -664,6 +718,7 @@ function resolveWaTemplateReferenceName($waTemplate): string
             return $value;
         }
     }
+
     return '';
 }
 
@@ -677,13 +732,14 @@ function buildWaTemplateComponentsReport($mappings, $request, string $typePesan)
             if ($mapping->is_required === 'Yes') {
                 $missingRequired[] = "{$mapping->source_key} [{$mapping->component_type}:{$mapping->param_index}]";
             }
+
             continue;
         }
         $componentType = strtolower((string) $mapping->component_type);
         $componentIndex = (int) ($mapping->component_index ?? 0);
         $componentSubType = strtolower((string) ($mapping->component_sub_type ?? ''));
         $groupKey = "{$componentType}|{$componentIndex}|{$componentSubType}";
-        if (!isset($grouped[$groupKey])) {
+        if (! isset($grouped[$groupKey])) {
             $grouped[$groupKey] = [
                 'type' => $componentType,
                 'component_index' => $componentIndex,
@@ -721,10 +777,11 @@ function buildWaTemplateComponentsReport($mappings, $request, string $typePesan)
         }
         $ai = isset($a['index']) ? (int) $a['index'] : (isset($a['card_index']) ? (int) $a['card_index'] : 0);
         $bi = isset($b['index']) ? (int) $b['index'] : (isset($b['card_index']) ? (int) $b['card_index'] : 0);
+
         return $ai <=> $bi;
     });
 
-    if (!empty($missingRequired)) {
+    if (! empty($missingRequired)) {
         return [
             'components' => [],
             'missing_required' => array_values(array_unique($missingRequired)),
@@ -754,7 +811,7 @@ function autoSendTagihanWa($tagihanId)
         ->where('tagihans.id', $tagihanId)
         ->first();
 
-    if (!$tagihan) {
+    if (! $tagihan) {
         return false;
     }
 
@@ -784,6 +841,7 @@ function autoSendTagihanWa($tagihanId)
                     'tanggal_kirim_notif_wa' => now(),
                     'updated_at' => now(),
                 ]);
+
             return true;
         }
     } catch (\Throwable $e) {
@@ -800,8 +858,8 @@ function autoSendWelcomeWa($pelangganId)
         ->where('id', $pelangganId)
         ->first();
 
-    if (!$pelanggan) {
-        $messageId = 'welcome-' . (string) $pelangganId . '-' . uniqid();
+    if (! $pelanggan) {
+        $messageId = 'welcome-'.(string) $pelangganId.'-'.uniqid();
         WaMessageStatusLog::create([
             'message_id' => $messageId,
             'recipient_id' => null,
@@ -811,11 +869,12 @@ function autoSendWelcomeWa($pelangganId)
             'errors' => [['message' => 'Pelanggan tidak ditemukan']],
             'payload' => ['pelanggan_id' => (int) $pelangganId],
         ]);
+
         return ['ok' => false, 'message' => 'Pelanggan tidak ditemukan', 'message_id' => $messageId];
     }
 
     if (empty($pelanggan->no_wa)) {
-        $messageId = 'welcome-' . (string) $pelangganId . '-' . uniqid();
+        $messageId = 'welcome-'.(string) $pelangganId.'-'.uniqid();
         WaMessageStatusLog::create([
             'message_id' => $messageId,
             'recipient_id' => null,
@@ -825,12 +884,13 @@ function autoSendWelcomeWa($pelangganId)
             'errors' => [['message' => 'Nomor WhatsApp pelanggan kosong']],
             'payload' => ['pelanggan_id' => (int) $pelangganId, 'no_layanan' => $pelanggan->no_layanan ?? null],
         ]);
+
         return ['ok' => false, 'message' => 'Nomor WhatsApp pelanggan kosong', 'message_id' => $messageId];
     }
 
     $waGateway = getWaGatewayActive();
     if ($waGateway->is_aktif !== 'Yes' || $waGateway->is_wa_welcome_active !== 'Yes') {
-        $messageId = 'welcome-' . (string) $pelangganId . '-' . uniqid();
+        $messageId = 'welcome-'.(string) $pelangganId.'-'.uniqid();
         WaMessageStatusLog::create([
             'message_id' => $messageId,
             'recipient_id' => (string) $pelanggan->no_wa,
@@ -845,6 +905,7 @@ function autoSendWelcomeWa($pelangganId)
                 'is_wa_welcome_active' => $waGateway->is_wa_welcome_active ?? null,
             ],
         ]);
+
         return ['ok' => false, 'message' => 'Gateway WA tidak aktif / welcome nonaktif', 'message_id' => $messageId];
     }
 
@@ -860,7 +921,7 @@ function autoSendWelcomeWa($pelangganId)
         }
         $raw = $response->raw ?? null;
         $rawArray = is_array($raw) ? $raw : json_decode(json_encode($raw), true);
-        $messageId = $response->message_id ?? data_get($rawArray, 'messages.0.id') ?? ('welcome-' . (string) $pelangganId . '-' . uniqid());
+        $messageId = $response->message_id ?? data_get($rawArray, 'messages.0.id') ?? ('welcome-'.(string) $pelangganId.'-'.uniqid());
         WaMessageStatusLog::create([
             'message_id' => $messageId,
             'recipient_id' => (string) $pelanggan->no_wa,
@@ -870,6 +931,7 @@ function autoSendWelcomeWa($pelangganId)
             'errors' => [['message' => $response->message ?? 'Notifikasi WA pendaftaran gagal dikirim']],
             'payload' => is_array($rawArray) ? $rawArray : ['raw' => $raw],
         ]);
+
         return [
             'ok' => false,
             'message' => $response->message ?? 'Notifikasi WA pendaftaran gagal dikirim',
@@ -877,7 +939,7 @@ function autoSendWelcomeWa($pelangganId)
         ];
     } catch (\Throwable $e) {
         Log::error('Auto send WA welcome failed', ['pelanggan_id' => $pelangganId, 'error' => $e->getMessage()]);
-        $messageId = 'welcome-' . (string) $pelangganId . '-' . uniqid();
+        $messageId = 'welcome-'.(string) $pelangganId.'-'.uniqid();
         WaMessageStatusLog::create([
             'message_id' => $messageId,
             'recipient_id' => (string) $pelanggan->no_wa,
@@ -887,6 +949,7 @@ function autoSendWelcomeWa($pelangganId)
             'errors' => [['message' => $e->getMessage()]],
             'payload' => ['exception' => $e->getMessage()],
         ]);
+
         return ['ok' => false, 'message' => $e->getMessage(), 'message_id' => $messageId];
     }
 }
@@ -906,7 +969,7 @@ function autoSendPaymentReceiptWa($tagihanId)
         ->where('tagihans.id', $tagihanId)
         ->first();
 
-    if (!$tagihan || empty($tagihan->no_wa)) {
+    if (! $tagihan || empty($tagihan->no_wa)) {
         return false;
     }
 
@@ -915,15 +978,17 @@ function autoSendPaymentReceiptWa($tagihanId)
         return false;
     }
 
-    if (!in_array((string) ($tagihan->status_bayar ?? ''), ['Sudah Bayar', 'PAID', 'Paid'], true)) {
+    if (! in_array((string) ($tagihan->status_bayar ?? ''), ['Sudah Bayar', 'PAID', 'Paid'], true)) {
         return false;
     }
 
     try {
         $response = sendNotifWa('', $tagihan, 'payment_receipt', $tagihan->no_wa);
+
         return isset($response->status) && ($response->status === true || $response->status === 'true');
     } catch (\Throwable $e) {
         Log::error('Auto send WA payment receipt failed', ['tagihan_id' => $tagihanId, 'error' => $e->getMessage()]);
+
         return false;
     }
 }
@@ -936,7 +1001,7 @@ function applyReferralBonusIfEligible(int $pelangganId): bool
             ->lockForUpdate()
             ->first();
 
-        if (!$pelanggan) {
+        if (! $pelanggan) {
             return null;
         }
 
@@ -944,7 +1009,7 @@ function applyReferralBonusIfEligible(int $pelangganId): bool
             return null;
         }
 
-        if (!empty($pelanggan->referral_bonus_paid_at)) {
+        if (! empty($pelanggan->referral_bonus_paid_at)) {
             return null;
         }
 
@@ -952,7 +1017,7 @@ function applyReferralBonusIfEligible(int $pelangganId): bool
             return null;
         }
 
-        if (empty($pelanggan->paket_layanan) || !is_numeric($pelanggan->paket_layanan)) {
+        if (empty($pelanggan->paket_layanan) || ! is_numeric($pelanggan->paket_layanan)) {
             return null;
         }
 
@@ -971,7 +1036,7 @@ function applyReferralBonusIfEligible(int $pelangganId): bool
             ->lockForUpdate()
             ->first();
 
-        if (!$referrer) {
+        if (! $referrer) {
             return null;
         }
 
@@ -995,7 +1060,7 @@ function applyReferralBonusIfEligible(int $pelangganId): bool
             'amount' => $nominalReferal,
             'balance_before' => $balanceBefore,
             'balance_after' => $balanceAfter,
-            'description' => "Penambahan balance dari fee referal pelanggan baru Bernama {$pelanggan->nama} dgn no layanan {$pelanggan->no_layanan} sebesar " . rupiah($nominalReferal),
+            'description' => "Penambahan balance dari fee referal pelanggan baru Bernama {$pelanggan->nama} dgn no layanan {$pelanggan->no_layanan} sebesar ".rupiah($nominalReferal),
         ]);
 
         DB::table('pelanggans')
@@ -1008,8 +1073,9 @@ function applyReferralBonusIfEligible(int $pelangganId): bool
         return (int) $referrer->id;
     });
 
-    if (!empty($referrerId)) {
+    if (! empty($referrerId)) {
         autoPayTagihanWithSaldo((int) $referrerId);
+
         return true;
     }
 
@@ -1024,7 +1090,7 @@ function createTiketAduanForWithdraw(int $withdrawId): ?int
             ->lockForUpdate()
             ->first();
 
-        if (!$withdraw) {
+        if (! $withdraw) {
             return null;
         }
 
@@ -1032,7 +1098,7 @@ function createTiketAduanForWithdraw(int $withdrawId): ?int
         $prefix = "TKT-{$tahun}-";
 
         $lastTicket = DB::table('tiket_aduans')
-            ->where('nomor_tiket', 'like', $prefix . '%')
+            ->where('nomor_tiket', 'like', $prefix.'%')
             ->orderByDesc('nomor_tiket')
             ->lockForUpdate()
             ->first();
@@ -1045,7 +1111,7 @@ function createTiketAduanForWithdraw(int $withdrawId): ?int
             }
         }
 
-        $nomorTiket = $prefix . str_pad((string) $nextNumber, 6, '0', STR_PAD_LEFT);
+        $nomorTiket = $prefix.str_pad((string) $nextNumber, 6, '0', STR_PAD_LEFT);
 
         $pelanggan = DB::table('pelanggans')
             ->select('id', 'nama', 'no_layanan')
@@ -1054,10 +1120,10 @@ function createTiketAduanForWithdraw(int $withdrawId): ?int
 
         $deskripsi = 'Permintaan withdraw saldo. ';
         if ($pelanggan) {
-            $deskripsi .= 'Pelanggan: ' . $pelanggan->nama . ' (' . $pelanggan->no_layanan . '). ';
+            $deskripsi .= 'Pelanggan: '.$pelanggan->nama.' ('.$pelanggan->no_layanan.'). ';
         }
-        $deskripsi .= 'Nominal: ' . rupiah((float) $withdraw->nominal_wd) . '. ';
-        $deskripsi .= 'Withdraw ID: ' . (string) $withdraw->id . '.';
+        $deskripsi .= 'Nominal: '.rupiah((float) $withdraw->nominal_wd).'. ';
+        $deskripsi .= 'Withdraw ID: '.(string) $withdraw->id.'.';
 
         $ticketId = DB::table('tiket_aduans')->insertGetId([
             'nomor_tiket' => $nomorTiket,
@@ -1077,7 +1143,7 @@ function createTiketAduanForWithdraw(int $withdrawId): ?int
 
 function applyInvestorSharingForPaidTagihan(int $tagihanId): bool
 {
-    if (!Schema::hasTable('investor_share_rules') || !Schema::hasTable('investor_earnings')) {
+    if (! Schema::hasTable('investor_share_rules') || ! Schema::hasTable('investor_earnings')) {
         return false;
     }
     $tagihan = DB::table('tagihans')
@@ -1097,11 +1163,11 @@ function applyInvestorSharingForPaidTagihan(int $tagihanId): bool
         )
         ->where('tagihans.id', $tagihanId)
         ->first();
-    if (!$tagihan) {
+    if (! $tagihan) {
         return false;
     }
     $statusBayar = strtolower(trim((string) ($tagihan->status_bayar ?? '')));
-    if (!in_array($statusBayar, ['sudah bayar', 'paid', 'lunas'], true)) {
+    if (! in_array($statusBayar, ['sudah bayar', 'paid', 'lunas'], true)) {
         return false;
     }
     $periode = trim((string) ($tagihan->periode_tagihan ?? ''));
@@ -1123,7 +1189,7 @@ function applyInvestorSharingForPaidTagihan(int $tagihanId): bool
     $includedPelangganByRule = [];
     if (Schema::hasTable('investor_share_rule_pelanggans')) {
         $ruleIds = $rules->pluck('id')->map(fn ($v) => (int) $v)->all();
-        if (!empty($ruleIds)) {
+        if (! empty($ruleIds)) {
             $rows = DB::table('investor_share_rule_pelanggans')
                 ->select('rule_id', 'pelanggan_id')
                 ->whereIn('rule_id', $ruleIds)
@@ -1131,7 +1197,7 @@ function applyInvestorSharingForPaidTagihan(int $tagihanId): bool
                 ->get();
             foreach ($rows as $row) {
                 $rid = (int) $row->rule_id;
-                if (!isset($includedPelangganByRule[$rid])) {
+                if (! isset($includedPelangganByRule[$rid])) {
                     $includedPelangganByRule[$rid] = [];
                 }
                 $includedPelangganByRule[$rid][] = (int) $row->pelanggan_id;
@@ -1142,18 +1208,18 @@ function applyInvestorSharingForPaidTagihan(int $tagihanId): bool
         $match = false;
         $ruleId = (int) ($rule->id ?? 0);
         $manualList = $includedPelangganByRule[$ruleId] ?? [];
-        if (!empty($manualList)) {
+        if (! empty($manualList)) {
             $match = in_array((int) ($tagihan->pelanggan_id ?? 0), $manualList, true);
         } else {
-        if ($rule->rule_type === 'per_customer') {
-            $match = true;
-        } elseif ($rule->rule_type === 'per_area' && !empty($rule->coverage_area_id)) {
-            $match = (int) $rule->coverage_area_id === (int) ($tagihan->coverage_area ?? 0);
-        } elseif ($rule->rule_type === 'per_package' && !empty($rule->package_id)) {
-            $match = (int) $rule->package_id === (int) ($tagihan->paket_layanan ?? 0);
+            if ($rule->rule_type === 'per_customer') {
+                $match = true;
+            } elseif ($rule->rule_type === 'per_area' && ! empty($rule->coverage_area_id)) {
+                $match = (int) $rule->coverage_area_id === (int) ($tagihan->coverage_area ?? 0);
+            } elseif ($rule->rule_type === 'per_package' && ! empty($rule->package_id)) {
+                $match = (int) $rule->package_id === (int) ($tagihan->paket_layanan ?? 0);
+            }
         }
-        }
-        if (!$match) {
+        if (! $match) {
             continue;
         }
         $startPeriod = trim((string) ($rule->start_period ?? ''));
@@ -1181,11 +1247,11 @@ function applyInvestorSharingForPaidTagihan(int $tagihanId): bool
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            if (!$inserted) {
+            if (! $inserted) {
                 return;
             }
             $wallet = DB::table('investor_wallets')->where('user_id', (int) $rule->user_id)->lockForUpdate()->first();
-            if (!$wallet) {
+            if (! $wallet) {
                 DB::table('investor_wallets')->insert([
                     'user_id' => (int) $rule->user_id,
                     'balance' => 0,
@@ -1206,25 +1272,26 @@ function applyInvestorSharingForPaidTagihan(int $tagihanId): bool
                 'amount' => $amount,
                 'balance_before' => $before,
                 'balance_after' => $after,
-                'description' => 'Bagi hasil tagihan ' . ($tagihan->no_tagihan ?? '-') . ' pelanggan ' . ($tagihan->nama_pelanggan ?? '-') . ' (' . ($tagihan->no_layanan ?? '-') . ')',
+                'description' => 'Bagi hasil tagihan '.($tagihan->no_tagihan ?? '-').' pelanggan '.($tagihan->nama_pelanggan ?? '-').' ('.($tagihan->no_layanan ?? '-').')',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
         });
     }
+
     return true;
 }
 
 function applyInvestorSharingForPaidTagihanForRule(int $tagihanId, int $ruleId): bool
 {
-    if (!Schema::hasTable('investor_share_rules') || !Schema::hasTable('investor_earnings')) {
+    if (! Schema::hasTable('investor_share_rules') || ! Schema::hasTable('investor_earnings')) {
         return false;
     }
     $rule = DB::table('investor_share_rules')
         ->where('id', (int) $ruleId)
         ->where('is_aktif', 'Yes')
         ->first();
-    if (!$rule) {
+    if (! $rule) {
         return false;
     }
 
@@ -1245,12 +1312,12 @@ function applyInvestorSharingForPaidTagihanForRule(int $tagihanId, int $ruleId):
         )
         ->where('tagihans.id', $tagihanId)
         ->first();
-    if (!$tagihan) {
+    if (! $tagihan) {
         return false;
     }
 
     $statusBayar = strtolower(trim((string) ($tagihan->status_bayar ?? '')));
-    if (!in_array($statusBayar, ['sudah bayar', 'paid', 'lunas'], true)) {
+    if (! in_array($statusBayar, ['sudah bayar', 'paid', 'lunas'], true)) {
         return false;
     }
 
@@ -1278,18 +1345,18 @@ function applyInvestorSharingForPaidTagihanForRule(int $tagihanId, int $ruleId):
     }
 
     $match = false;
-    if (!empty($manualList)) {
+    if (! empty($manualList)) {
         $match = in_array((int) ($tagihan->pelanggan_id ?? 0), $manualList, true);
     } else {
         if ($rule->rule_type === 'per_customer') {
             $match = true;
-        } elseif ($rule->rule_type === 'per_area' && !empty($rule->coverage_area_id)) {
+        } elseif ($rule->rule_type === 'per_area' && ! empty($rule->coverage_area_id)) {
             $match = (int) $rule->coverage_area_id === (int) ($tagihan->coverage_area ?? 0);
-        } elseif ($rule->rule_type === 'per_package' && !empty($rule->package_id)) {
+        } elseif ($rule->rule_type === 'per_package' && ! empty($rule->package_id)) {
             $match = (int) $rule->package_id === (int) ($tagihan->paket_layanan ?? 0);
         }
     }
-    if (!$match) {
+    if (! $match) {
         return false;
     }
 
@@ -1318,12 +1385,13 @@ function applyInvestorSharingForPaidTagihanForRule(int $tagihanId, int $ruleId):
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        if (!$inserted) {
+        if (! $inserted) {
             $credited = false;
+
             return;
         }
         $wallet = DB::table('investor_wallets')->where('user_id', (int) $rule->user_id)->lockForUpdate()->first();
-        if (!$wallet) {
+        if (! $wallet) {
             DB::table('investor_wallets')->insert([
                 'user_id' => (int) $rule->user_id,
                 'balance' => 0,
@@ -1344,7 +1412,7 @@ function applyInvestorSharingForPaidTagihanForRule(int $tagihanId, int $ruleId):
             'amount' => $amount,
             'balance_before' => $before,
             'balance_after' => $after,
-            'description' => 'Bagi hasil tagihan ' . ($tagihan->no_tagihan ?? '-') . ' pelanggan ' . ($tagihan->nama_pelanggan ?? '-') . ' (' . ($tagihan->no_layanan ?? '-') . ')',
+            'description' => 'Bagi hasil tagihan '.($tagihan->no_tagihan ?? '-').' pelanggan '.($tagihan->nama_pelanggan ?? '-').' ('.($tagihan->no_layanan ?? '-').')',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -1360,14 +1428,14 @@ function resolveWaTemplateMappingValue($mapping, $request, string $typePesan)
     $setting = json_decode(json_encode(getSettingWeb()), true) ?: [];
     $packageName = $req['nama_layanan'] ?? null;
     $packageId = $req['paket_layanan'] ?? null;
-    if (($packageName === null || $packageName === '') && !empty($packageId) && is_numeric($packageId)) {
+    if (($packageName === null || $packageName === '') && ! empty($packageId) && is_numeric($packageId)) {
         $packageName = DB::table('packages')->where('id', (int) $packageId)->value('nama_layanan');
     }
     $tanggalJatuhTempo = $req['tanggal_jatuh_tempo'] ?? null;
-    if (($tanggalJatuhTempo === null || $tanggalJatuhTempo === '') && !empty($req['periode']) && !empty($req['tanggal_daftar']) && isset($req['jatuh_tempo'])) {
+    if (($tanggalJatuhTempo === null || $tanggalJatuhTempo === '') && ! empty($req['periode']) && ! empty($req['tanggal_daftar']) && isset($req['jatuh_tempo'])) {
         $tanggalJatuhTempo = myrbaTagihanDueDateFromPendaftaran($req['periode'], $req['tanggal_daftar'], $req['jatuh_tempo']);
     }
-    if (($tanggalJatuhTempo === null || $tanggalJatuhTempo === '') && !empty($req['tanggal_create_tagihan']) && isset($req['jatuh_tempo'])) {
+    if (($tanggalJatuhTempo === null || $tanggalJatuhTempo === '') && ! empty($req['tanggal_create_tagihan']) && isset($req['jatuh_tempo'])) {
         $tanggalJatuhTempo = addHari($req['tanggal_create_tagihan'], $req['jatuh_tempo']);
     }
     $tanggalBayar = $req['tanggal_bayar'] ?? null;
@@ -1379,7 +1447,7 @@ function resolveWaTemplateMappingValue($mapping, $request, string $typePesan)
     }
     $tagihanId = $req['tagihan_id'] ?? ($req['id'] ?? null);
     $linkInvoice = $req['link_invoice'] ?? null;
-    if (($linkInvoice === null || $linkInvoice === '') && !empty($tagihanId)) {
+    if (($linkInvoice === null || $linkInvoice === '') && ! empty($tagihanId)) {
         $linkInvoice = myrbaInvoiceSignedUrl($tagihanId);
     }
     if ($linkInvoice !== null && $linkInvoice !== '') {
@@ -1462,7 +1530,7 @@ function resolveWaTemplateMappingValue($mapping, $request, string $typePesan)
             break;
         }
     }
-    if (($value === null || $value === '') && !empty($mapping->default_value)) {
+    if (($value === null || $value === '') && ! empty($mapping->default_value)) {
         $value = $mapping->default_value;
     }
     if (is_bool($value)) {
@@ -1471,6 +1539,7 @@ function resolveWaTemplateMappingValue($mapping, $request, string $typePesan)
     if (is_scalar($value)) {
         return (string) $value;
     }
+
     return null;
 }
 
@@ -1490,12 +1559,15 @@ function buildWaTemplateParameter(string $parameterType, string $value): array
     }
     if ($parameterType === 'action') {
         $decoded = json_decode($value, true);
+
         return ['type' => 'action', 'action' => is_array($decoded) ? $decoded : ['flow_token' => $value]];
     }
     if ($parameterType === 'product') {
         $decoded = json_decode($value, true);
+
         return ['type' => 'product', 'product' => is_array($decoded) ? $decoded : ['product_retailer_id' => $value]];
     }
+
     return ['type' => 'text', 'text' => $value];
 }
 
@@ -1510,7 +1582,7 @@ function parseWaGatewayResponse($response, string $defaultMessage): object
     $statusFromBody = data_get($bodyArray, 'status');
     $successFromBody = data_get($bodyArray, 'success');
     $errors = data_get($bodyArray, 'errors');
-    $hasErrors = (is_array($errors) && !empty($errors)) || isset($bodyArray['error']);
+    $hasErrors = (is_array($errors) && ! empty($errors)) || isset($bodyArray['error']);
 
     $isSuccess = false;
     if ($response->successful()) {
@@ -1522,7 +1594,7 @@ function parseWaGatewayResponse($response, string $defaultMessage): object
             $isSuccess = $statusFromBody;
         } elseif (is_string($statusFromBody)) {
             $isSuccess = in_array(strtolower($statusFromBody), ['true', 'ok', 'success', 'sent', 'queued', 'accepted'], true);
-        } elseif (!empty(data_get($bodyArray, 'messages')) || !empty($messageId)) {
+        } elseif (! empty(data_get($bodyArray, 'messages')) || ! empty($messageId)) {
             $isSuccess = true;
         }
         if ($hasErrors) {
@@ -1543,15 +1615,16 @@ function parseWaGatewayResponse($response, string $defaultMessage): object
     if ($errorMessage === $defaultMessage) {
         $rawExcerpt = trim(preg_replace('/\s+/', ' ', strip_tags((string) $rawBody)));
         if ($rawExcerpt !== '') {
-            $errorMessage .= ' - ' . mb_substr($rawExcerpt, 0, 300);
+            $errorMessage .= ' - '.mb_substr($rawExcerpt, 0, 300);
         }
     }
     if ($errorMessage === $defaultMessage && method_exists($response, 'status')) {
         $statusCode = (int) $response->status();
         if ($statusCode > 0) {
-            $errorMessage .= ' [HTTP ' . $statusCode . ']';
+            $errorMessage .= ' [HTTP '.$statusCode.']';
         }
     }
+
     return (object) [
         'status' => false,
         'message' => $errorMessage,
@@ -1561,7 +1634,7 @@ function parseWaGatewayResponse($response, string $defaultMessage): object
 
 function resolveWaGatewayErrorMessage(?array $bodyArray, string $defaultMessage): string
 {
-    if (!is_array($bodyArray)) {
+    if (! is_array($bodyArray)) {
         return $defaultMessage;
     }
 
@@ -1589,7 +1662,7 @@ function resolveWaGatewayErrorMessage(?array $bodyArray, string $defaultMessage)
                 $flatten[] = trim($value);
             }
         }
-        if (!empty($flatten)) {
+        if (! empty($flatten)) {
             return implode(' | ', $flatten);
         }
     }
@@ -1597,13 +1670,13 @@ function resolveWaGatewayErrorMessage(?array $bodyArray, string $defaultMessage)
     $errorsMap = data_get($bodyArray, 'errors');
     if (is_array($errorsMap)) {
         foreach ($errorsMap as $field => $messages) {
-            if (is_array($messages) && !empty($messages)) {
+            if (is_array($messages) && ! empty($messages)) {
                 $first = $messages[0] ?? null;
                 if (is_string($first) && trim($first) !== '') {
-                    return trim((string) $field) . ': ' . trim($first);
+                    return trim((string) $field).': '.trim($first);
                 }
             } elseif (is_string($messages) && trim($messages) !== '') {
-                return trim((string) $field) . ': ' . trim($messages);
+                return trim((string) $field).': '.trim($messages);
             }
         }
     }
@@ -1617,17 +1690,19 @@ function totalStatusBayar($status)
     $query = DB::table('tagihans')
         ->leftJoin('pelanggans', 'tagihans.pelanggan_id', '=', 'pelanggans.id')
         ->where('tagihans.status_bayar', $status);
-    if (!empty($allowedAreas)) {
+    if (! empty($allowedAreas)) {
         $query->whereIn('pelanggans.coverage_area', $allowedAreas);
     } else {
         return 0;
     }
+
     return $query->count();
 }
 
 function addHari($tgl, $jatuh_tempo)
 {
-    $tgl    = date('Y-m-d', strtotime('+' . $jatuh_tempo . 'days', strtotime($tgl)));
+    $tgl = date('Y-m-d', strtotime('+'.$jatuh_tempo.'days', strtotime($tgl)));
+
     return $tgl;
 }
 
@@ -1635,7 +1710,7 @@ function myrbaTagihanDueDateFromPendaftaran($periode, $tanggalDaftar, $tambahanH
 {
     try {
         $periode = trim((string) $periode);
-        if (!preg_match('/^\d{4}-\d{2}$/', $periode)) {
+        if (! preg_match('/^\d{4}-\d{2}$/', $periode)) {
             return null;
         }
         $signup = \Carbon\Carbon::parse($tanggalDaftar);
@@ -1645,6 +1720,7 @@ function myrbaTagihanDueDateFromPendaftaran($periode, $tanggalDaftar, $tambahanH
         $baseDay = $signupDay > $lastDay ? $lastDay : $signupDay;
         $base = $base->day($baseDay)->startOfDay();
         $due = $base->copy()->addDays((int) $tambahanHari);
+
         return $due->format('Y-m-d');
     } catch (\Throwable $e) {
         return null;
@@ -1660,7 +1736,7 @@ function myrbaUpcomingBillingPeriodForPelanggan($tanggalDaftar, $tambahanHari, $
         for ($i = 0; $i < 3; $i++) {
             $periode = $startMonth->copy()->addMonths($i)->format('Y-m');
             $dueStr = myrbaTagihanDueDateFromPendaftaran($periode, $tanggalDaftar, $tambahanHari);
-            if (!$dueStr) {
+            if (! $dueStr) {
                 continue;
             }
             $due = \Carbon\Carbon::parse($dueStr)->startOfDay();
@@ -1671,15 +1747,17 @@ function myrbaUpcomingBillingPeriodForPelanggan($tanggalDaftar, $tambahanHari, $
         if (empty($candidates)) {
             $periode = $startMonth->copy()->addMonths(1)->format('Y-m');
             $dueStr = myrbaTagihanDueDateFromPendaftaran($periode, $tanggalDaftar, $tambahanHari);
-            if (!$dueStr) {
+            if (! $dueStr) {
                 return null;
             }
             $due = \Carbon\Carbon::parse($dueStr)->startOfDay();
+
             return ['periode' => $due->format('Y-m'), 'due_date' => $due->toDateString()];
         }
         usort($candidates, function ($a, $b) {
             return $a['due']->timestamp <=> $b['due']->timestamp;
         });
+
         return ['periode' => $candidates[0]['periode'], 'due_date' => $candidates[0]['due_date']];
     } catch (\Throwable $e) {
         return null;
@@ -1690,7 +1768,7 @@ function myrbaNextBillingPeriodForPelanggan($tanggalDaftar, $tambahanHari, $from
 {
     try {
         $upcoming = myrbaUpcomingBillingPeriodForPelanggan($tanggalDaftar, $tambahanHari, $fromDate);
-        if (!$upcoming || empty($upcoming['due_date'])) {
+        if (! $upcoming || empty($upcoming['due_date'])) {
             return null;
         }
         $after = \Carbon\Carbon::parse($upcoming['due_date'])->addDay()->startOfDay();
@@ -1699,7 +1777,7 @@ function myrbaNextBillingPeriodForPelanggan($tanggalDaftar, $tambahanHari, $from
         for ($i = 0; $i < 4; $i++) {
             $periode = $startMonth->copy()->addMonths($i)->format('Y-m');
             $dueStr = myrbaTagihanDueDateFromPendaftaran($periode, $tanggalDaftar, $tambahanHari);
-            if (!$dueStr) {
+            if (! $dueStr) {
                 continue;
             }
             $due = \Carbon\Carbon::parse($dueStr)->startOfDay();
@@ -1710,15 +1788,17 @@ function myrbaNextBillingPeriodForPelanggan($tanggalDaftar, $tambahanHari, $from
         if (empty($candidates)) {
             $periode = $startMonth->copy()->addMonths(1)->format('Y-m');
             $dueStr = myrbaTagihanDueDateFromPendaftaran($periode, $tanggalDaftar, $tambahanHari);
-            if (!$dueStr) {
+            if (! $dueStr) {
                 return null;
             }
             $due = \Carbon\Carbon::parse($dueStr)->startOfDay();
+
             return ['periode' => $due->format('Y-m'), 'due_date' => $due->toDateString()];
         }
         usort($candidates, function ($a, $b) {
             return $a['due']->timestamp <=> $b['due']->timestamp;
         });
+
         return ['periode' => $candidates[0]['periode'], 'due_date' => $candidates[0]['due_date']];
     } catch (\Throwable $e) {
         return null;
@@ -1731,19 +1811,21 @@ function hitungUang($type)
         $pemasukan = DB::table('pemasukans')
 
             ->sum('pemasukans.nominal');
+
         return $pemasukan;
     } else {
         $pengeluaran = DB::table('pengeluarans')
 
             ->sum('pengeluarans.nominal');
+
         return $pengeluaran;
     }
 }
 
 function tanggal_indonesia($tanggal)
 {
-    $bulan = array(
-        1 =>   'Januari',
+    $bulan = [
+        1 => 'Januari',
         'Februari',
         'Maret',
         'April',
@@ -1754,101 +1836,107 @@ function tanggal_indonesia($tanggal)
         'September',
         'Oktober',
         'November',
-        'Desember'
-    );
+        'Desember',
+    ];
 
     $pecahkan = explode('-', $tanggal);
-    return $bulan[(int)$pecahkan[1]] . ' ' . $pecahkan[0];
-}
 
+    return $bulan[(int) $pecahkan[1]].' '.$pecahkan[0];
+}
 
 function randN($length)
 {
-    $chars = "23456789";
+    $chars = '23456789';
     $charArray = str_split($chars);
     $charCount = strlen($chars);
-    $result = "";
+    $result = '';
     for ($i = 1; $i <= $length; $i++) {
         $randChar = rand(0, $charCount - 1);
         $result .= $charArray[$randChar];
     }
+
     return $result;
 }
 
 function randUC($length)
 {
-    $chars = "ABCDEFGHJKLMNPRSTUVWXYZ";
+    $chars = 'ABCDEFGHJKLMNPRSTUVWXYZ';
     $charArray = str_split($chars);
     $charCount = strlen($chars);
-    $result = "";
+    $result = '';
     for ($i = 1; $i <= $length; $i++) {
         $randChar = rand(0, $charCount - 1);
         $result .= $charArray[$randChar];
     }
+
     return $result;
 }
 
 function randLC($length)
 {
-    $chars = "abcdefghijkmnprstuvwxyz";
+    $chars = 'abcdefghijkmnprstuvwxyz';
     $charArray = str_split($chars);
     $charCount = strlen($chars);
-    $result = "";
+    $result = '';
     for ($i = 1; $i <= $length; $i++) {
         $randChar = rand(0, $charCount - 1);
         $result .= $charArray[$randChar];
     }
+
     return $result;
 }
 
 function randULC($length)
 {
-    $chars = "ABCDEFGHJKLMNPRSTUVWXYZabcdefghijkmnprstuvwxyz";
+    $chars = 'ABCDEFGHJKLMNPRSTUVWXYZabcdefghijkmnprstuvwxyz';
     $charArray = str_split($chars);
     $charCount = strlen($chars);
-    $result = "";
+    $result = '';
     for ($i = 1; $i <= $length; $i++) {
         $randChar = rand(0, $charCount - 1);
         $result .= $charArray[$randChar];
     }
+
     return $result;
 }
 
 function randNLC($length)
 {
-    $chars = "23456789abcdefghijkmnprstuvwxyz";
+    $chars = '23456789abcdefghijkmnprstuvwxyz';
     $charArray = str_split($chars);
     $charCount = strlen($chars);
-    $result = "";
+    $result = '';
     for ($i = 1; $i <= $length; $i++) {
         $randChar = rand(0, $charCount - 1);
         $result .= $charArray[$randChar];
     }
+
     return $result;
 }
 
 function randNUC($length)
 {
-    $chars = "23456789ABCDEFGHJKLMNPRSTUVWXYZ";
+    $chars = '23456789ABCDEFGHJKLMNPRSTUVWXYZ';
     $charArray = str_split($chars);
     $charCount = strlen($chars);
-    $result = "";
+    $result = '';
     for ($i = 1; $i <= $length; $i++) {
         $randChar = rand(0, $charCount - 1);
         $result .= $charArray[$randChar];
     }
+
     return $result;
 }
 
 function permissionAreaCoverageAccessName($areaId)
 {
-    return 'area coverage access:' . $areaId;
+    return 'area coverage access:'.$areaId;
 }
 
 function getAllowedAreaCoverageIdsForUser()
 {
     $user = Auth::user();
-    if (!$user) {
+    if (! $user) {
         return [];
     }
     if (method_exists($user, 'hasRole') && $user->hasRole('Super Admin')) {
@@ -1867,6 +1955,7 @@ function getAllowedAreaCoverageIdsForUser()
             }
         }
     }
+
     return array_values(array_unique($ids));
 }
 
@@ -1891,12 +1980,13 @@ function getInternetIncomeCategoryIdForPelanggan($pelangganId)
         ->where('area_coverages.tenant_id', $tenantId)
         ->first();
     $areaName = $info ? ($info->nama ?: $info->kode_area ?: 'Tidak Diketahui') : 'Tidak Diketahui';
-    $categoryName = 'Pemasukan internet - ' . $areaName;
+    $categoryName = 'Pemasukan internet - '.$areaName;
     $existing = DB::table('category_pemasukans')->where('tenant_id', $tenantId)->where('nama_kategori_pemasukan', $categoryName)->first();
     if ($existing) {
         return $existing->id;
     }
     $model = CategoryPemasukan::create(['tenant_id' => $tenantId, 'nama_kategori_pemasukan' => $categoryName]);
+
     return $model->id;
 }
 
@@ -1912,6 +2002,7 @@ function getSaldoIncomeCategoryId()
         return $existing->id;
     }
     $model = CategoryPemasukan::create(['tenant_id' => $tenantId, 'nama_kategori_pemasukan' => $categoryName]);
+
     return $model->id;
 }
 
@@ -1921,7 +2012,7 @@ function autoPayTagihanWithSaldo($pelangganId)
         ->select('id', 'tenant_id', 'balance', 'nama')
         ->where('id', $pelangganId)
         ->first();
-    if (!$pelanggan) {
+    if (! $pelanggan) {
         return 0;
     }
     $tenantId = (int) ($pelanggan->tenant_id ?? 1);
@@ -1963,7 +2054,7 @@ function autoPayTagihanWithSaldo($pelangganId)
             'category_pemasukan_id' => $categoryId,
             'referense_id' => $tagihan->id,
             'metode_bayar' => 'Saldo',
-            'keterangan' => 'Pembayaran Tagihan no Tagihan ' . $tagihan->no_tagihan . ' a/n ' . $pelanggan->nama . ' Periode ' . $tagihan->periode,
+            'keterangan' => 'Pembayaran Tagihan no Tagihan '.$tagihan->no_tagihan.' a/n '.$pelanggan->nama.' Periode '.$tagihan->periode,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -1979,7 +2070,7 @@ function autoPayTagihanWithSaldo($pelangganId)
             'amount' => $total,
             'balance_before' => $balance,
             'balance_after' => $balanceAfter,
-            'description' => 'Pembayaran Tagihan #' . $tagihan->no_tagihan,
+            'description' => 'Pembayaran Tagihan #'.$tagihan->no_tagihan,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -1997,19 +2088,21 @@ function autoPayTagihanWithSaldo($pelangganId)
                 ->update(['status_berlangganan' => 'Aktif']);
         }
     }
+
     return $paidCount;
 }
 
 function randNULC($length)
 {
-    $chars = "23456789ABCDEFGHJKLMNPRSTUVWXYZabcdefghijkmnprstuvwxyz";
+    $chars = '23456789ABCDEFGHJKLMNPRSTUVWXYZabcdefghijkmnprstuvwxyz';
     $charArray = str_split($chars);
     $charCount = strlen($chars);
-    $result = "";
+    $result = '';
     for ($i = 1; $i <= $length; $i++) {
         $randChar = rand(0, $charCount - 1);
         $result .= $charArray[$randChar];
     }
+
     return $result;
 }
 
@@ -2024,26 +2117,35 @@ function resolveTripayConfigForTenantId(int $tenantId): ?array
     if ($tenantId < 1) {
         return null;
     }
-    if (!class_exists(\App\Models\Tenant::class)) {
+    if (! class_exists(\App\Models\Tenant::class)) {
         return null;
     }
 
     $tenant = \App\Models\Tenant::query()->find($tenantId);
-    if (!$tenant) {
+    if (! $tenant) {
         return null;
     }
 
-    $baseUrl = trim((string) ($tenant->tripay_base_url ?? ''));
-    $apiKey = trim((string) ($tenant->tripay_api_key ?? ''));
-    $merchantCode = trim((string) ($tenant->tripay_merchant_code ?? ''));
-    $privateKey = trim((string) ($tenant->tripay_private_key ?? ''));
+    $providerMode = strtolower((string) ($tenant->tripay_provider_mode ?? 'owner'));
+    if ($providerMode !== 'tenant') {
+        $settingWeb = getSettingWeb();
+        $baseUrl = trim((string) ($settingWeb->url_tripay ?? ''));
+        $apiKey = trim((string) ($settingWeb->api_key_tripay ?? ''));
+        $merchantCode = trim((string) ($settingWeb->kode_merchant ?? ''));
+        $privateKey = trim((string) ($settingWeb->private_key ?? ''));
+    } else {
+        $baseUrl = trim((string) ($tenant->tripay_base_url ?? ''));
+        $apiKey = trim((string) ($tenant->tripay_api_key ?? ''));
+        $merchantCode = trim((string) ($tenant->tripay_merchant_code ?? ''));
+        $privateKey = trim((string) ($tenant->tripay_private_key ?? ''));
+    }
 
     if ($baseUrl === '' || $apiKey === '' || $merchantCode === '' || $privateKey === '') {
         return null;
     }
 
     return [
-        'base_url' => rtrim($baseUrl, '/') . '/',
+        'base_url' => rtrim($baseUrl, '/').'/',
         'api_key' => $apiKey,
         'merchant_code' => $merchantCode,
         'private_key' => $privateKey,
@@ -2060,6 +2162,7 @@ function resolveTenantIdFromTagihanId(int $tagihanId): int
             ->leftJoin('pelanggans', 'tagihans.pelanggan_id', '=', 'pelanggans.id')
             ->where('tagihans.id', $tagihanId)
             ->value('pelanggans.tenant_id');
+
         return (int) ($tenantId ?? 1);
     } catch (\Throwable $e) {
         return 1;
@@ -2072,8 +2175,13 @@ function resolveTenantIdFromNoLayanan(string $noLayanan): int
     if ($noLayanan === '') {
         return 1;
     }
+    [$tidGuess, $nl] = parsePrefixedNoLayanan($noLayanan);
+    if ($tidGuess > 0 && $nl !== '') {
+        return $tidGuess;
+    }
     try {
         $tenantId = DBFacade::table('pelanggans')->where('no_layanan', $noLayanan)->value('tenant_id');
+
         return (int) ($tenantId ?? 1);
     } catch (\Throwable $e) {
         return 1;
@@ -2091,6 +2199,7 @@ function resolveTenantIdFromTripayReference(string $reference): int
             ->leftJoin('pelanggans', 'tagihans.pelanggan_id', '=', 'pelanggans.id')
             ->where('tagihans.tripay_reference', $reference)
             ->value('pelanggans.tenant_id');
+
         return (int) ($tenantId ?? 1);
     } catch (\Throwable $e) {
         return 1;
@@ -2108,6 +2217,7 @@ function resolveTenantIdFromInvoiceRef(string $invoiceId): int
             ->leftJoin('pelanggans', 'tagihans.pelanggan_id', '=', 'pelanggans.id')
             ->where('tagihans.no_tagihan', $invoiceId)
             ->value('pelanggans.tenant_id');
+
         return (int) ($tenantId ?? 1);
     } catch (\Throwable $e) {
         return 1;
@@ -2125,6 +2235,7 @@ function resolveTenantIdFromTopupRef(string $topupNo): int
             ->leftJoin('pelanggans', 'topups.pelanggan_id', '=', 'pelanggans.id')
             ->where('topups.no_topup', $topupNo)
             ->value('pelanggans.tenant_id');
+
         return (int) ($tenantId ?? 1);
     } catch (\Throwable $e) {
         return 1;
@@ -2137,7 +2248,8 @@ function getWaGatewayActive()
     if ($provider === 'ivosight') {
         $settingWeb = getSettingWeb();
         $isActive = ($settingWeb->is_wa_broadcast_active ?? 'Yes') === 'Yes' ? 'Yes' : 'No';
-        return (object)[
+
+        return (object) [
             'provider' => 'ivosight',
             'is_aktif' => $isActive,
             'api_key' => config('whatsapp.ivosight.api_key'),
@@ -2146,7 +2258,8 @@ function getWaGatewayActive()
             'is_wa_welcome_active' => ($settingWeb->is_wa_welcome_active ?? 'Yes') === 'Yes' ? 'Yes' : 'No',
         ];
     }
-    return (object)[
+
+    return (object) [
         'provider' => $provider,
         'is_aktif' => 'No',
         'api_key' => null,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\Fcm\FcmClient;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +13,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 class AdminController extends Controller
 {
@@ -36,6 +36,7 @@ class AdminController extends Controller
             }
         } catch (\Throwable $e) {
         }
+
         return false;
     }
 
@@ -66,12 +67,13 @@ class AdminController extends Controller
         } catch (\Throwable $e) {
             $periodOptions = [Carbon::now()->format('Y-m')];
         }
+
         return $periodOptions;
     }
 
     private function investorResolvePelangganIds(int $userId, string $statusFilter): array
     {
-        if (!DB::getSchemaBuilder()->hasTable('investor_share_rules')) {
+        if (! DB::getSchemaBuilder()->hasTable('investor_share_rules')) {
             return [];
         }
 
@@ -87,7 +89,7 @@ class AdminController extends Controller
         $manualPelangganByRule = [];
         if (DB::getSchemaBuilder()->hasTable('investor_share_rule_pelanggans')) {
             $ruleIds = $rules->pluck('id')->map(fn ($v) => (int) $v)->all();
-            if (!empty($ruleIds)) {
+            if (! empty($ruleIds)) {
                 $rows = DB::table('investor_share_rule_pelanggans')
                     ->select('rule_id', 'pelanggan_id')
                     ->whereIn('rule_id', $ruleIds)
@@ -95,7 +97,7 @@ class AdminController extends Controller
                     ->get();
                 foreach ($rows as $row) {
                     $rid = (int) $row->rule_id;
-                    if (!isset($manualPelangganByRule[$rid])) {
+                    if (! isset($manualPelangganByRule[$rid])) {
                         $manualPelangganByRule[$rid] = [];
                     }
                     $manualPelangganByRule[$rid][] = (int) $row->pelanggan_id;
@@ -107,8 +109,9 @@ class AdminController extends Controller
         foreach ($rules as $rule) {
             $ruleId = (int) ($rule->id ?? 0);
             $manualList = $manualPelangganByRule[$ruleId] ?? [];
-            if (!empty($manualList)) {
+            if (! empty($manualList)) {
                 $pelangganIds = array_merge($pelangganIds, $manualList);
+
                 continue;
             }
 
@@ -116,10 +119,10 @@ class AdminController extends Controller
             if ($status !== 'Semua') {
                 $q->where('status_berlangganan', $status);
             }
-            if ($rule->rule_type === 'per_area' && !empty($rule->coverage_area_id)) {
+            if ($rule->rule_type === 'per_area' && ! empty($rule->coverage_area_id)) {
                 $q->where('coverage_area', (int) $rule->coverage_area_id);
             }
-            if ($rule->rule_type === 'per_package' && !empty($rule->package_id)) {
+            if ($rule->rule_type === 'per_package' && ! empty($rule->package_id)) {
                 $q->where('paket_layanan', (int) $rule->package_id);
             }
             $pelangganIds = array_merge($pelangganIds, $q->pluck('id')->all());
@@ -157,11 +160,11 @@ class AdminController extends Controller
             ->orWhere('name', $login)
             ->first();
 
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
             return apiResponse(false, 'Login atau password salah.', [], 401);
         }
 
-        $tokenName = $validated['device_name'] ?? ('myrba-admin-' . Str::random(6));
+        $tokenName = $validated['device_name'] ?? ('myrba-admin-'.Str::random(6));
         $token = $user->createToken($tokenName)->plainTextToken;
 
         return apiResponse(true, 'Login berhasil.', [
@@ -182,7 +185,7 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
@@ -204,11 +207,11 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
-        if (!$user->hasPermissionTo('admin profile edit')) {
+        if (! $user->hasPermissionTo('admin profile edit')) {
             return apiResponse(false, 'Forbidden', [], 403);
         }
 
@@ -224,12 +227,13 @@ class AdminController extends Controller
         if (array_key_exists('password', $validated) && $validated['password'] !== null && $validated['password'] !== '') {
             $updates['password'] = Hash::make((string) $validated['password']);
         }
-        if (!empty($updates)) {
+        if (! empty($updates)) {
             $updates['updated_at'] = now();
             DB::table('users')->where('id', (int) $user->id)->update($updates);
         }
 
         $fresh = User::find((int) $user->id);
+
         return apiResponse(true, 'Profil berhasil diperbarui.', [
             'user' => $fresh ? $this->buildUserPayload($fresh) : $this->buildUserPayload($user),
         ]);
@@ -243,11 +247,11 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
-        if (!$user->hasPermissionTo('admin profile edit')) {
+        if (! $user->hasPermissionTo('admin profile edit')) {
             return apiResponse(false, 'Forbidden', [], 403);
         }
 
@@ -266,6 +270,7 @@ class AdminController extends Controller
         ]);
 
         $fresh = User::find((int) $user->id);
+
         return apiResponse(true, 'Foto profil berhasil diperbarui.', [
             'user' => $fresh ? $this->buildUserPayload($fresh) : $this->buildUserPayload($user),
         ]);
@@ -279,7 +284,7 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
@@ -299,11 +304,12 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
         $permissions = $this->getPermissionNames($user);
+
         return apiResponse(true, 'Menu berhasil diambil.', [
             'menus' => $this->buildMenuByPermissions($permissions),
         ]);
@@ -317,7 +323,7 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
@@ -337,7 +343,7 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
@@ -347,7 +353,7 @@ class AdminController extends Controller
         if ($user->hasPermissionTo('pelanggan view')) {
             $badges['request_pelanggan'] = (int) DB::table('pelanggans')
                 ->where('status_berlangganan', 'Menunggu')
-                ->when(!empty($allowedAreas), function ($q) use ($allowedAreas) {
+                ->when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
                     $q->whereIn('coverage_area', $allowedAreas);
                 })
                 ->when(empty($allowedAreas), function ($q) {
@@ -360,7 +366,7 @@ class AdminController extends Controller
             $badges['daftar_tiket'] = (int) DB::table('tiket_aduans')
                 ->join('pelanggans', 'tiket_aduans.pelanggan_id', '=', 'pelanggans.id')
                 ->where('tiket_aduans.status', 'Menunggu')
-                ->when(!empty($allowedAreas), function ($q) use ($allowedAreas) {
+                ->when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
                     $q->whereIn('pelanggans.coverage_area', $allowedAreas);
                 })
                 ->when(empty($allowedAreas), function ($q) {
@@ -373,7 +379,7 @@ class AdminController extends Controller
             $badges['daftar_tagihan'] = (int) DB::table('tagihans')
                 ->join('pelanggans', 'tagihans.pelanggan_id', '=', 'pelanggans.id')
                 ->where('tagihans.status_bayar', 'Waiting Review')
-                ->when(!empty($allowedAreas), function ($q) use ($allowedAreas) {
+                ->when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
                     $q->whereIn('pelanggans.coverage_area', $allowedAreas);
                 })
                 ->when(empty($allowedAreas), function ($q) {
@@ -395,7 +401,7 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
@@ -417,6 +423,7 @@ class AdminController extends Controller
                     'last_seen_at' => now(),
                     'updated_at' => now(),
                 ]);
+
                 return;
             }
             DB::table('admin_fcm_tokens')->insert([
@@ -460,7 +467,7 @@ class AdminController extends Controller
                 return;
             }
 
-            $client = new FcmClient();
+            $client = new FcmClient;
             foreach ($tokens as $row) {
                 $token = trim((string) ($row->token ?? ''));
                 if ($token === '') {
@@ -483,8 +490,9 @@ class AdminController extends Controller
             ->where('status_berlangganan', 'Menunggu')
             ->when(true, function ($q) {
                 $allowedAreas = $this->allowedAreaCoverageIds();
-                if (!empty($allowedAreas)) {
+                if (! empty($allowedAreas)) {
                     $q->whereIn('coverage_area', $allowedAreas);
+
                     return;
                 }
                 $q->whereRaw('1 = 0');
@@ -509,13 +517,14 @@ class AdminController extends Controller
             ->leftJoin('area_coverages', 'pelanggans.coverage_area', '=', 'area_coverages.id')
             ->when(true, function ($q) {
                 $allowedAreas = $this->allowedAreaCoverageIds();
-                if (!empty($allowedAreas)) {
+                if (! empty($allowedAreas)) {
                     $q->whereIn('pelanggans.coverage_area', $allowedAreas);
+
                     return;
                 }
                 $q->whereRaw('1 = 0');
             })
-            ->when(!empty($status), function ($q) use ($status) {
+            ->when(! empty($status), function ($q) use ($status) {
                 $q->where('pelanggans.status_berlangganan', $status);
             })
             ->select(
@@ -545,7 +554,7 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
@@ -555,10 +564,10 @@ class AdminController extends Controller
 
         $allowedAreas = $this->allowedAreaCoverageIds();
         $pelanggan = DB::table('pelanggans')->where('id', (int) $id)->first();
-        if (!$pelanggan) {
+        if (! $pelanggan) {
             return apiResponse(false, 'Pelanggan tidak ditemukan.', [], 404);
         }
-        if (empty($allowedAreas) || !in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
+        if (empty($allowedAreas) || ! in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
             return apiResponse(false, 'Forbidden', [], 403);
         }
 
@@ -585,16 +594,16 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
         $allowedAreas = $this->allowedAreaCoverageIds();
         $pelanggan = DB::table('pelanggans')->where('id', (int) $id)->first();
-        if (!$pelanggan) {
+        if (! $pelanggan) {
             return apiResponse(false, 'Pelanggan tidak ditemukan.', [], 404);
         }
-        if (empty($allowedAreas) || !in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
+        if (empty($allowedAreas) || ! in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
             return apiResponse(false, 'Forbidden', [], 403);
         }
         if ((string) ($pelanggan->status_berlangganan ?? '') !== 'Menunggu') {
@@ -630,16 +639,16 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
         $allowedAreas = $this->allowedAreaCoverageIds();
         $pelanggan = DB::table('pelanggans')->where('id', (int) $id)->first();
-        if (!$pelanggan) {
+        if (! $pelanggan) {
             return apiResponse(false, 'Pelanggan tidak ditemukan.', [], 404);
         }
-        if (empty($allowedAreas) || !in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
+        if (empty($allowedAreas) || ! in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
             return apiResponse(false, 'Forbidden', [], 403);
         }
         if ((string) ($pelanggan->status_berlangganan ?? '') !== 'Menunggu') {
@@ -669,8 +678,9 @@ class AdminController extends Controller
             ->leftJoin('pelanggans', 'tiket_aduans.pelanggan_id', '=', 'pelanggans.id')
             ->when(true, function ($q) {
                 $allowedAreas = $this->allowedAreaCoverageIds();
-                if (!empty($allowedAreas)) {
+                if (! empty($allowedAreas)) {
                     $q->whereIn('pelanggans.coverage_area', $allowedAreas);
+
                     return;
                 }
                 $q->whereRaw('1 = 0');
@@ -716,13 +726,14 @@ class AdminController extends Controller
             ->leftJoin('pelanggans', 'tagihans.pelanggan_id', '=', 'pelanggans.id')
             ->when(true, function ($q) {
                 $allowedAreas = $this->allowedAreaCoverageIds();
-                if (!empty($allowedAreas)) {
+                if (! empty($allowedAreas)) {
                     $q->whereIn('pelanggans.coverage_area', $allowedAreas);
+
                     return;
                 }
                 $q->whereRaw('1 = 0');
             })
-            ->when(!empty($period), function ($q) use ($period) {
+            ->when(! empty($period), function ($q) use ($period) {
                 $q->where('tagihans.periode', $period);
             })
             ->select(
@@ -754,7 +765,7 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
@@ -769,10 +780,10 @@ class AdminController extends Controller
             ->where('tagihans.id', (int) $id)
             ->select('tagihans.*', 'pelanggans.coverage_area', 'pelanggans.nama as pelanggan_nama', 'pelanggans.no_layanan')
             ->first();
-        if (!$tagihan) {
+        if (! $tagihan) {
             return apiResponse(false, 'Data tagihan tidak ditemukan.', [], 404);
         }
-        if (empty($allowedAreas) || !in_array((int) ($tagihan->coverage_area ?? 0), $allowedAreas, true)) {
+        if (empty($allowedAreas) || ! in_array((int) ($tagihan->coverage_area ?? 0), $allowedAreas, true)) {
             return apiResponse(false, 'Forbidden', [], 403);
         }
 
@@ -791,7 +802,7 @@ class AdminController extends Controller
             'updated_at' => $tgl,
         ];
         if ($payload['metode_bayar'] === 'Transfer Bank') {
-            $payload['bank_account_id'] = !empty($validated['bank_account_id']) ? (int) $validated['bank_account_id'] : null;
+            $payload['bank_account_id'] = ! empty($validated['bank_account_id']) ? (int) $validated['bank_account_id'] : null;
         }
 
         DB::table('tagihans')->where('id', (int) $id)->update($payload);
@@ -799,7 +810,7 @@ class AdminController extends Controller
         self::notifyAdminsByPermission(
             'tagihan view',
             'Tagihan menunggu review',
-            'Tagihan ' . ($tagihan->no_tagihan ?? '-') . ' a/n ' . ($tagihan->pelanggan_nama ?? '-') . ' (' . ($tagihan->no_layanan ?? '-') . ')',
+            'Tagihan '.($tagihan->no_tagihan ?? '-').' a/n '.($tagihan->pelanggan_nama ?? '-').' ('.($tagihan->no_layanan ?? '-').')',
             [
                 'type' => 'tagihan',
                 'badge_key' => 'daftar_tagihan',
@@ -824,37 +835,52 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
         DB::beginTransaction();
         try {
             $tgl = now();
+            $enabledFromRaw = getSettingWeb()?->setor_enabled_from ?? '2026-04-01 00:00:00';
+            $enabledFrom = \Carbon\Carbon::parse((string) $enabledFromRaw);
             $tagihan = DB::table('tagihans')->where('id', (int) $id)->lockForUpdate()->first();
-            if (!$tagihan) {
+            if (! $tagihan) {
                 DB::rollBack();
+
                 return apiResponse(false, 'Data tagihan tidak ditemukan.', [], 404);
             }
 
             if (strtolower(trim((string) ($tagihan->status_bayar ?? ''))) === 'sudah bayar') {
                 DB::rollBack();
+
                 return apiResponse(false, 'Tagihan sudah berstatus dibayar.', [], 400);
             }
 
+            $isSetorScheme = $tgl->greaterThanOrEqualTo($enabledFrom) && in_array((string) ($tagihan->metode_bayar ?? ''), ['Cash', 'Transfer Bank'], true);
+
             DB::table('tagihans')->where('id', (int) $id)->update([
-                'status_bayar' => 'Sudah Bayar',
+                'status_bayar' => $isSetorScheme ? 'Menunggu setor' : 'Sudah Bayar',
                 'tanggal_review' => $tgl,
                 'reviewed_by' => (int) $user->id,
                 'updated_at' => $tgl,
             ]);
 
+            if ($isSetorScheme) {
+                DB::commit();
+
+                return apiResponse(true, 'Tagihan berhasil divalidasi, menunggu setor.', [
+                    'tagihan_id' => (int) $id,
+                ]);
+            }
+
             $categoryId = getInternetIncomeCategoryIdForPelanggan((int) ($tagihan->pelanggan_id ?? 0));
             DB::table('pemasukans')->insert([
+                'tenant_id' => (int) ($user->tenant_id ?? 0),
                 'nominal' => (float) ($tagihan->total_bayar ?? 0),
                 'tanggal' => $tgl,
                 'category_pemasukan_id' => $categoryId,
-                'keterangan' => 'Pembayaran Tagihan no Tagihan ' . ($tagihan->no_tagihan ?? '-') . ' a/n ' . (string) ($tagihan->pelanggan_id ?? '-') . ' Periode ' . (string) ($tagihan->periode ?? '-'),
+                'keterangan' => 'Pembayaran Tagihan no Tagihan '.($tagihan->no_tagihan ?? '-').' a/n '.(string) ($tagihan->pelanggan_id ?? '-').' Periode '.(string) ($tagihan->periode ?? '-'),
                 'referense_id' => (int) $id,
                 'metode_bayar' => (string) ($tagihan->metode_bayar ?? '-'),
                 'created_at' => $tgl,
@@ -863,11 +889,13 @@ class AdminController extends Controller
             applyInvestorSharingForPaidTagihan((int) $id);
 
             DB::commit();
+
             return apiResponse(true, 'Tagihan berhasil divalidasi.', [
                 'tagihan_id' => (int) $id,
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return apiResponse(false, 'Gagal validasi tagihan.', ['error' => $e->getMessage()], 500);
         }
     }
@@ -880,24 +908,24 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
         $can = $user->hasPermissionTo('tagihan view') || $user->hasPermissionTo('investor view');
-        if (!$can) {
+        if (! $can) {
             return apiResponse(false, 'Forbidden', ['required_permission' => 'tagihan view|investor view'], 403);
         }
 
         $tagihan = DB::table('tagihans')->where('id', (int) $id)->first();
-        if (!$tagihan) {
+        if (! $tagihan) {
             return apiResponse(false, 'Data tagihan tidak ditemukan.', [], 404);
         }
 
         if ($this->isInvestorUser($user)) {
             $pelangganId = (int) ($tagihan->pelanggan_id ?? 0);
             $allowed = $this->investorResolvePelangganIds((int) $user->id, 'Semua');
-            if (empty($pelangganId) || empty($allowed) || !in_array($pelangganId, $allowed, true)) {
+            if (empty($pelangganId) || empty($allowed) || ! in_array($pelangganId, $allowed, true)) {
                 return apiResponse(false, 'Forbidden', [], 403);
             }
         }
@@ -923,8 +951,9 @@ class AdminController extends Controller
             ->leftJoin('area_coverages', 'odcs.wilayah_odc', '=', 'area_coverages.id')
             ->when(true, function ($q) {
                 $allowedAreas = $this->allowedAreaCoverageIds();
-                if (!empty($allowedAreas)) {
+                if (! empty($allowedAreas)) {
                     $q->whereIn('odcs.wilayah_odc', $allowedAreas);
+
                     return;
                 }
                 $q->whereRaw('1 = 0');
@@ -955,8 +984,9 @@ class AdminController extends Controller
             ->leftJoin('area_coverages', 'odps.wilayah_odp', '=', 'area_coverages.id')
             ->when(true, function ($q) {
                 $allowedAreas = $this->allowedAreaCoverageIds();
-                if (!empty($allowedAreas)) {
+                if (! empty($allowedAreas)) {
                     $q->whereIn('odps.wilayah_odp', $allowedAreas);
+
                     return;
                 }
                 $q->whereRaw('1 = 0');
@@ -1055,7 +1085,6 @@ class AdminController extends Controller
 
         return apiResponse(true, 'Data secret PPP berhasil diambil.', $this->paginate($query, $request));
     }
-
 
     public function barangs(Request $request): JsonResponse
     {
@@ -1385,20 +1414,20 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
         $canApprove = $user->hasPermissionTo('investor payout approve');
         $canRequest = $user->hasPermissionTo('investor payout request');
-        if (!$canApprove && !$canRequest) {
+        if (! $canApprove && ! $canRequest) {
             return apiResponse(false, 'Forbidden', ['required_permission' => 'investor payout approve|investor payout request'], 403);
         }
 
         $query = DB::table('investor_payout_requests as pr')
             ->leftJoin('users as u', 'pr.user_id', '=', 'u.id')
             ->leftJoin('users as au', 'pr.approved_by', '=', 'au.id')
-            ->when(!$canApprove, function ($q) use ($user) {
+            ->when(! $canApprove, function ($q) use ($user) {
                 $q->where('pr.user_id', (int) $user->id);
             })
             ->select(
@@ -1433,7 +1462,7 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
@@ -1459,7 +1488,7 @@ class AdminController extends Controller
 
             $customers = [];
             $summary = ['total' => 0, 'paid' => 0, 'unpaid' => 0, 'no_invoice' => 0, 'not_printed' => 0, 'printed' => 0];
-            if (!empty($pelangganIds)) {
+            if (! empty($pelangganIds)) {
                 $pelanggans = DB::table('pelanggans')
                     ->leftJoin('area_coverages', 'pelanggans.coverage_area', '=', 'area_coverages.id')
                     ->leftJoin('packages', 'pelanggans.paket_layanan', '=', 'packages.id')
@@ -1486,13 +1515,19 @@ class AdminController extends Controller
                 $paidStatuses = ['sudah bayar', 'paid', 'lunas'];
                 foreach ($pelangganIds as $pid) {
                     $p = $pelanggans[(int) $pid] ?? null;
-                    if (!$p) continue;
+                    if (! $p) {
+                        continue;
+                    }
                     $t = $tagihans[(int) $pid] ?? null;
                     $statusBayar = strtolower(trim((string) ($t->status_bayar ?? '')));
                     $isPaid = $t ? in_array($statusBayar, $paidStatuses, true) : false;
                     $summary['total']++;
-                    if ($isPaid) $summary['paid']++; else $summary['unpaid']++;
-                    if (!$t) {
+                    if ($isPaid) {
+                        $summary['paid']++;
+                    } else {
+                        $summary['unpaid']++;
+                    }
+                    if (! $t) {
                         $summary['no_invoice']++;
                     } else {
                         if (empty($t->printed_at)) {
@@ -1516,7 +1551,7 @@ class AdminController extends Controller
                         'tanggal_bayar' => $t->tanggal_bayar ?? null,
                         'total_bayar' => $t->total_bayar ?? null,
                         'printed_at' => $t->printed_at ?? null,
-                        'print_status' => !$t ? 'NO_INVOICE' : (empty($t->printed_at) ? 'NOT_PRINTED' : 'PRINTED'),
+                        'print_status' => ! $t ? 'NO_INVOICE' : (empty($t->printed_at) ? 'NOT_PRINTED' : 'PRINTED'),
                     ];
                 }
             }
@@ -1574,7 +1609,7 @@ class AdminController extends Controller
         $minStartPeriod = $minStartPeriod ? trim((string) $minStartPeriod) : null;
 
         $periodOptions = $this->investorPeriodOptions($minStartPeriod);
-        if (!in_array($period, $periodOptions, true)) {
+        if (! in_array($period, $periodOptions, true)) {
             $period = $periodOptions[0] ?? now()->format('Y-m');
         }
 
@@ -1586,7 +1621,7 @@ class AdminController extends Controller
         )));
 
         $users = [];
-        if (!empty($userIds)) {
+        if (! empty($userIds)) {
             $users = DB::table('users')
                 ->select('id', 'name', 'email')
                 ->whereIn('id', $userIds)
@@ -1648,16 +1683,16 @@ class AdminController extends Controller
 
         foreach ($users as $u) {
             $uid = (int) $u->id;
-            $balance = (float) (data_get($wallets, $uid . '.balance') ?? 0);
-            $rulesTotal = (int) (data_get($rulesAgg, $uid . '.rules_total') ?? 0);
-            $rulesActive = (int) (data_get($rulesAgg, $uid . '.rules_active') ?? 0);
-            $earningCount = (int) (data_get($earnPeriod, $uid . '.earning_count') ?? 0);
-            $earningAmount = (float) (data_get($earnPeriod, $uid . '.earning_amount') ?? 0);
-            $earningTotalAmount = (float) (data_get($earnTotal, $uid . '.earning_total_amount') ?? 0);
-            $pendingCount = (int) (data_get($payoutPending, $uid . '.pending_count') ?? 0);
-            $pendingAmount = (float) (data_get($payoutPending, $uid . '.pending_amount') ?? 0);
-            $approvedPeriodAmount = (float) (data_get($payoutApprovedPeriod, $uid . '.approved_amount') ?? 0);
-            $last = (string) (data_get($lastActivity, $uid . '.last_activity_at') ?? '');
+            $balance = (float) (data_get($wallets, $uid.'.balance') ?? 0);
+            $rulesTotal = (int) (data_get($rulesAgg, $uid.'.rules_total') ?? 0);
+            $rulesActive = (int) (data_get($rulesAgg, $uid.'.rules_active') ?? 0);
+            $earningCount = (int) (data_get($earnPeriod, $uid.'.earning_count') ?? 0);
+            $earningAmount = (float) (data_get($earnPeriod, $uid.'.earning_amount') ?? 0);
+            $earningTotalAmount = (float) (data_get($earnTotal, $uid.'.earning_total_amount') ?? 0);
+            $pendingCount = (int) (data_get($payoutPending, $uid.'.pending_count') ?? 0);
+            $pendingAmount = (float) (data_get($payoutPending, $uid.'.pending_amount') ?? 0);
+            $approvedPeriodAmount = (float) (data_get($payoutApprovedPeriod, $uid.'.approved_amount') ?? 0);
+            $last = (string) (data_get($lastActivity, $uid.'.last_activity_at') ?? '');
 
             $rows[] = [
                 'id' => $uid,
@@ -1703,7 +1738,7 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
@@ -1737,7 +1772,7 @@ class AdminController extends Controller
         $page = $this->paginate($query, $request);
         $ids = collect($page['data'])->pluck('id')->map(fn ($v) => (int) $v)->all();
         $tagihans = [];
-        if (!empty($ids)) {
+        if (! empty($ids)) {
             $tagihans = DB::table('tagihans')
                 ->select('id', 'pelanggan_id', 'no_tagihan', 'periode', 'status_bayar', 'tanggal_bayar', 'total_bayar', 'printed_at')
                 ->whereIn('pelanggan_id', $ids)
@@ -1758,7 +1793,7 @@ class AdminController extends Controller
                 'tanggal_bayar' => $t->tanggal_bayar ?? null,
                 'total_bayar' => $t->total_bayar ?? null,
                 'printed_at' => $t->printed_at ?? null,
-                'print_status' => !$t ? 'NO_INVOICE' : (empty($t->printed_at) ? 'NOT_PRINTED' : 'PRINTED'),
+                'print_status' => ! $t ? 'NO_INVOICE' : (empty($t->printed_at) ? 'NOT_PRINTED' : 'PRINTED'),
             ]);
         }
 
@@ -1782,7 +1817,7 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
@@ -1833,19 +1868,19 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
         $canApprove = $user->hasPermissionTo('investor payout approve');
         $canRequest = $user->hasPermissionTo('investor payout request');
-        if (!$canApprove && !$canRequest) {
+        if (! $canApprove && ! $canRequest) {
             return apiResponse(false, 'Forbidden', ['required_permission' => 'investor payout approve|investor payout request'], 403);
         }
 
         $query = DB::table('investor_payout_accounts as a')
             ->leftJoin('users as u', 'a.user_id', '=', 'u.id')
-            ->when(!$canApprove, function ($q) use ($user) {
+            ->when(! $canApprove, function ($q) use ($user) {
                 $q->where('a.user_id', (int) $user->id);
             })
             ->select(
@@ -1871,13 +1906,13 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
         $canApprove = $user->hasPermissionTo('investor payout approve');
         $canRequest = $user->hasPermissionTo('investor payout request');
-        if (!$canApprove && !$canRequest) {
+        if (! $canApprove && ! $canRequest) {
             return apiResponse(false, 'Forbidden', ['required_permission' => 'investor payout approve|investor payout request'], 403);
         }
 
@@ -1889,7 +1924,7 @@ class AdminController extends Controller
             'user_id' => 'nullable|integer|min:1',
         ]);
 
-        $targetUserId = $canApprove && !empty($validated['user_id']) ? (int) $validated['user_id'] : (int) $user->id;
+        $targetUserId = $canApprove && ! empty($validated['user_id']) ? (int) $validated['user_id'] : (int) $user->id;
 
         $existing = DB::table('investor_payout_accounts')->where('user_id', $targetUserId)->first();
         $payload = [
@@ -1908,6 +1943,7 @@ class AdminController extends Controller
         }
 
         $account = DB::table('investor_payout_accounts')->where('user_id', $targetUserId)->first();
+
         return apiResponse(true, 'Rekening/E-Wallet berhasil disimpan.', [
             'account' => $account,
         ]);
@@ -1921,15 +1957,15 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
-        if (!$user->hasPermissionTo('investor payout request')) {
+        if (! $user->hasPermissionTo('investor payout request')) {
             return apiResponse(false, 'Forbidden', ['required_permission' => 'investor payout request'], 403);
         }
 
-        if (!$this->isInvestorUser($user)) {
+        if (! $this->isInvestorUser($user)) {
             return apiResponse(false, 'Forbidden', [], 403);
         }
 
@@ -1945,7 +1981,7 @@ class AdminController extends Controller
         }
 
         $account = DB::table('investor_payout_accounts')->where('user_id', (int) $user->id)->first();
-        if (!$account) {
+        if (! $account) {
             return apiResponse(false, 'Rekening/E-Wallet belum disimpan.', [], 400);
         }
 
@@ -1977,11 +2013,11 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
-        if (!$user->hasPermissionTo('investor view')) {
+        if (! $user->hasPermissionTo('investor view')) {
             return apiResponse(false, 'Forbidden', ['required_permission' => 'investor view'], 403);
         }
 
@@ -1993,7 +2029,7 @@ class AdminController extends Controller
             ->when($this->isInvestorUser($user), function ($q) use ($user) {
                 $q->where('bos.owner_user_id', (int) $user->id);
             })
-            ->when(!$this->isInvestorUser($user) && $ownerUserId > 0, function ($q) use ($ownerUserId) {
+            ->when(! $this->isInvestorUser($user) && $ownerUserId > 0, function ($q) use ($ownerUserId) {
                 $q->where('bos.owner_user_id', $ownerUserId);
             })
             ->select(
@@ -2020,11 +2056,11 @@ class AdminController extends Controller
         }
 
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
 
-        if (!$user->hasPermissionTo('investor view')) {
+        if (! $user->hasPermissionTo('investor view')) {
             return apiResponse(false, 'Forbidden', ['required_permission' => 'investor view'], 403);
         }
 
@@ -2137,7 +2173,7 @@ class AdminController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'no_wa' => $user->no_wa,
-            'avatar_url' => !empty($user->avatar) ? asset('storage/uploads/avatars/' . $user->avatar) : null,
+            'avatar_url' => ! empty($user->avatar) ? asset('storage/uploads/avatars/'.$user->avatar) : null,
         ];
     }
 
@@ -2158,6 +2194,7 @@ class AdminController extends Controller
                 }, $g['items']),
             ];
         }
+
         return $menus;
     }
 
@@ -2172,6 +2209,7 @@ class AdminController extends Controller
                     return true;
                 }
             }
+
             return false;
         };
 
@@ -2183,7 +2221,7 @@ class AdminController extends Controller
             foreach (($group['items'] ?? []) as $item) {
                 $required = (array) ($item['required_permissions'] ?? []);
                 $allowed = $hasAny($required);
-                if (!$includeLocked && !$allowed) {
+                if (! $includeLocked && ! $allowed) {
                     continue;
                 }
                 $itemsOut[] = [
@@ -2192,7 +2230,7 @@ class AdminController extends Controller
                     'icon' => (string) ($item['icon'] ?? 'folder'),
                     'endpoint' => $item['endpoint'] ?? null,
                     'allowed' => $allowed,
-                    'locked' => !$allowed,
+                    'locked' => ! $allowed,
                     'required_permissions' => $required,
                 ];
             }
@@ -2214,12 +2252,13 @@ class AdminController extends Controller
     private function denyWithoutPermission(Request $request, string $permission): ?JsonResponse
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return apiResponse(false, 'Unauthorized', [], 401);
         }
-        if (!$user->hasPermissionTo($permission)) {
+        if (! $user->hasPermissionTo($permission)) {
             return apiResponse(false, 'Forbidden', ['required_permission' => $permission], 403);
         }
+
         return null;
     }
 

@@ -2,30 +2,24 @@
 
 namespace App\Http\Controllers\Frontend;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\Api\AdminController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use RealRashid\SweetAlert\Facades\Alert;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use App\Http\Controllers\Controller;
 use App\Models\Pelanggan;
-use App\Models\Package;
-use App\Models\WaGateway;
-use App\Models\User;
-use Image;
-use Illuminate\Support\Facades\Http;
 use App\Models\SettingWeb;
 use App\Services\TenantEntitlementService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Image;
 
 class WebController extends Controller
 {
     public function index(Request $request)
     {
         // Jika tidak ada request 'no_tagihan', tampilkan landing page
-        if (!$request->has('no_tagihan')) {
+        if (! $request->has('no_tagihan')) {
             return view('layouts.frontend.landing');
         }
 
@@ -33,8 +27,23 @@ class WebController extends Controller
         $metodeBayar = [];
 
         $settingWeb = SettingWeb::first(); // ✅ Ambil setting
-        $tenantId = resolveTenantIdFromNoLayanan((string) $no_tagihan);
-        if (!TenantEntitlementService::featureEnabledForTenantId($tenantId, 'payment_gateway', false)) {
+        $tenantId = (int) $request->query('tid', 0);
+        $noLayanan = trim((string) $no_tagihan);
+        if ($tenantId < 1) {
+            [$tidGuess, $nl] = parsePrefixedNoLayanan($noLayanan);
+            if ($tidGuess > 0 && $nl !== '') {
+                $tenantId = $tidGuess;
+                $noLayanan = $nl;
+            } else {
+                $tenantId = resolveTenantIdFromNoLayanan($noLayanan);
+            }
+        } else {
+            [, $nl] = parsePrefixedNoLayanan($noLayanan);
+            if ($nl !== '') {
+                $noLayanan = $nl;
+            }
+        }
+        if (! TenantEntitlementService::featureEnabledForTenantId($tenantId, 'payment_gateway', false)) {
             return view('frontend.index', [
                 'no_tagihan' => $no_tagihan,
                 'tagihan' => null,
@@ -47,7 +56,7 @@ class WebController extends Controller
         $tagihan = DB::table('tagihans')
             ->leftJoin('pelanggans', 'tagihans.pelanggan_id', '=', 'pelanggans.id')
             ->select('tagihans.*', 'pelanggans.nama', 'pelanggans.no_layanan')
-            ->where('pelanggans.no_layanan', '=', $no_tagihan)
+            ->where('pelanggans.no_layanan', '=', $noLayanan)
             ->where('tagihans.status_bayar', '=', 'Belum Bayar')
             ->orderBy('tagihans.id', 'asc')
             ->first();
@@ -55,13 +64,13 @@ class WebController extends Controller
         if ($tagihan) {
             $tagihanCount = DB::table('tagihans')
                 ->leftJoin('pelanggans', 'tagihans.pelanggan_id', '=', 'pelanggans.id')
-                ->where('pelanggans.no_layanan', '=', $no_tagihan)
+                ->where('pelanggans.no_layanan', '=', $noLayanan)
                 ->where('tagihans.status_bayar', '=', 'Belum Bayar')
                 ->count();
 
             if ($tagihan->status_bayar == 'Belum Bayar') {
                 $tripay = resolveTripayConfigForTenantId($tenantId);
-                if (!$tripay) {
+                if (! $tripay) {
                     return view('frontend.index', [
                         'no_tagihan' => $no_tagihan,
                         'tagihan' => $tagihan,
@@ -71,11 +80,11 @@ class WebController extends Controller
                     ])->with('error', 'Konfigurasi Tripay belum diisi oleh tenant.');
                 }
 
-                $url =  $tripay['base_url'] . 'merchant/payment-channel';
+                $url = $tripay['base_url'].'merchant/payment-channel';
                 $api_key = $tripay['api_key'];
 
                 $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . $api_key
+                    'Authorization' => 'Bearer '.$api_key,
                 ])->get($url);
 
                 $a = json_decode($response->getBody());
@@ -83,14 +92,14 @@ class WebController extends Controller
                     $metodeBayar = $a->data;
                 } else {
                     echo $a->message;
-                    die();
+                    exit();
                 }
             }
         } else {
             $tagihan = DB::table('tagihans')
                 ->leftJoin('pelanggans', 'tagihans.pelanggan_id', '=', 'pelanggans.id')
                 ->select('tagihans.*', 'pelanggans.nama', 'pelanggans.no_layanan')
-                ->where('pelanggans.no_layanan', '=', $no_tagihan)
+                ->where('pelanggans.no_layanan', '=', $noLayanan)
                 ->orderBy('tagihans.id', 'desc')
                 ->first();
             $tagihanCount = 0;
@@ -109,11 +118,11 @@ class WebController extends Controller
     {
         $settingWeb = getSettingWeb();
         $tenantId = resolveTenantIdFromTagihanId((int) $tagihan_id);
-        if (!TenantEntitlementService::featureEnabledForTenantId($tenantId, 'payment_gateway', false)) {
+        if (! TenantEntitlementService::featureEnabledForTenantId($tenantId, 'payment_gateway', false)) {
             abort(403, 'Payment gateway tidak tersedia untuk tenant ini.');
         }
         $tripay = resolveTripayConfigForTenantId($tenantId);
-        if (!$tripay) {
+        if (! $tripay) {
             abort(403, 'Konfigurasi Tripay belum diisi oleh tenant.');
         }
         $tagihans = DB::table('tagihans')
@@ -122,55 +131,56 @@ class WebController extends Controller
             ->select('tagihans.*', 'pelanggans.nama', 'pelanggans.jatuh_tempo', 'pelanggans.email as email_customer', 'pelanggans.no_wa', 'packages.nama_layanan', 'pelanggans.no_layanan')
             ->where('tagihans.id', '=', $tagihan_id)
             ->first();
-        $apiKey       = $tripay['api_key'];
-        $privateKey   = $tripay['private_key'];
+        $apiKey = $tripay['api_key'];
+        $privateKey = $tripay['private_key'];
         $merchantCode = $tripay['merchant_code'];
-        $merchantRef  = $tagihans->no_tagihan;
-        $url = $tripay['base_url'] . 'transaction/create';
-        $amount       =  $tagihans->total_bayar;
+        $merchantRef = $tagihans->no_tagihan;
+        $url = $tripay['base_url'].'transaction/create';
+        $amount = $tagihans->total_bayar;
         $data = [
-            'method'         => $method,
-            'merchant_ref'   => $merchantRef,
-            'amount'         => $amount,
-            'customer_name'  => $tagihans->nama,
+            'method' => $method,
+            'merchant_ref' => $merchantRef,
+            'amount' => $amount,
+            'customer_name' => $tagihans->nama,
             'customer_email' => $tagihans->email_customer,
             'customer_phone' => $tagihans->no_wa,
-            'order_items'    => [
+            'order_items' => [
                 [
-                    'sku'         => 'Internet ' . $settingWeb->nama_perusahaan,
-                    'name'        => 'Pembayaran Internet',
-                    'price'       => $tagihans->total_bayar,
-                    'quantity'    => 1,
+                    'sku' => 'Internet '.$settingWeb->nama_perusahaan,
+                    'name' => 'Pembayaran Internet',
+                    'price' => $tagihans->total_bayar,
+                    'quantity' => 1,
                     'product_url' => '',
-                    'image_url'   => '',
-                ]
+                    'image_url' => '',
+                ],
             ],
             'expired_time' => (time() + (24 * 60 * 60)),
-            'signature'    => hash_hmac('sha256', $merchantCode . $merchantRef . $amount, $privateKey)
+            'signature' => hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey),
         ];
         $curl = curl_init();
         curl_setopt_array($curl, [
-            CURLOPT_FRESH_CONNECT  => true,
-            CURLOPT_URL            => $url,
+            CURLOPT_FRESH_CONNECT => true,
+            CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER         => false,
-            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $apiKey],
-            CURLOPT_FAILONERROR    => false,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => http_build_query($data),
-            CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4
+            CURLOPT_HEADER => false,
+            CURLOPT_HTTPHEADER => ['Authorization: Bearer '.$apiKey],
+            CURLOPT_FAILONERROR => false,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($data),
+            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
         ]);
         $response = curl_exec($curl);
         $error = curl_error($curl);
         curl_close($curl);
         $response = json_decode($response)->data;
-        if (!empty($response->reference)) {
+        if (! empty($response->reference)) {
             DB::table('tagihans')->where('id', (int) $tagihan_id)->update([
                 'tripay_reference' => (string) $response->reference,
             ]);
         }
+
         return redirect()->route('detailBayar', [
-            'id' => $response->reference
+            'id' => $response->reference,
         ]);
     }
 
@@ -178,11 +188,11 @@ class WebController extends Controller
     {
         $settingWeb = getSettingWeb();
         $tenantId = resolveTenantIdFromTripayReference((string) $reference);
-        if (!TenantEntitlementService::featureEnabledForTenantId($tenantId, 'payment_gateway', false)) {
+        if (! TenantEntitlementService::featureEnabledForTenantId($tenantId, 'payment_gateway', false)) {
             abort(403, 'Payment gateway tidak tersedia untuk tenant ini.');
         }
         $tripay = resolveTripayConfigForTenantId($tenantId);
-        if (!$tripay) {
+        if (! $tripay) {
             abort(403, 'Konfigurasi Tripay belum diisi oleh tenant.');
         }
 
@@ -191,13 +201,13 @@ class WebController extends Controller
 
         $curl = curl_init();
         curl_setopt_array($curl, [
-            CURLOPT_FRESH_CONNECT  => true,
-            CURLOPT_URL            => $tripay['base_url'] . 'transaction/detail?' . http_build_query($payload),
+            CURLOPT_FRESH_CONNECT => true,
+            CURLOPT_URL => $tripay['base_url'].'transaction/detail?'.http_build_query($payload),
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER         => false,
-            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $apiKey],
-            CURLOPT_FAILONERROR    => false,
-            CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4
+            CURLOPT_HEADER => false,
+            CURLOPT_HTTPHEADER => ['Authorization: Bearer '.$apiKey],
+            CURLOPT_FAILONERROR => false,
+            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
         ]);
 
         $response = curl_exec($curl);
@@ -206,13 +216,13 @@ class WebController extends Controller
         $response = json_decode($response)->data;
 
         // 🚨 Cek apakah `pay_code` null → redirect ke checkout_url (e-wallet)
-        if (empty($response->pay_code) && !empty($response->checkout_url)) {
+        if (empty($response->pay_code) && ! empty($response->checkout_url)) {
             return redirect()->away($response->checkout_url);
         }
 
         // 🔁 Kalau bukan e-wallet, lanjut tampilkan detail
         return view('frontend.detailBayar', [
-            'detail' => $response
+            'detail' => $response,
         ]);
     }
 
@@ -224,6 +234,7 @@ class WebController extends Controller
     public function daftar(Request $request)
     {
         $ref = trim((string) $request->query('ref', ''));
+
         return view('frontend.daftar', [
             'ref' => $ref,
         ]);
@@ -236,9 +247,10 @@ class WebController extends Controller
             return redirect()->route('daftar');
         }
         $exists = DB::table('pelanggans')->where('no_layanan', $code)->exists();
-        if (!$exists) {
+        if (! $exists) {
             return redirect()->route('daftar');
         }
+
         return redirect()->route('daftar', ['ref' => $code]);
     }
 
@@ -284,7 +296,7 @@ class WebController extends Controller
                 $uploadedFile = $request->file('photo_ktp');
                 $filename = $uploadedFile->hashName();
 
-                if (!file_exists($path)) {
+                if (! file_exists($path)) {
                     mkdir($path, 0777, true);
                 }
                 try {
@@ -292,7 +304,7 @@ class WebController extends Controller
                         ->resize(500, 500, function ($constraint) {
                             $constraint->upsize();
                             $constraint->aspectRatio();
-                        })->save($path . $filename);
+                        })->save($path.$filename);
                 } catch (\Throwable $th) {
                     $uploadedFile->move($path, $filename);
                 }
@@ -309,11 +321,12 @@ class WebController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
             report($th);
+
             return redirect()->back()->withInput()->with('error', 'Pendaftaran gagal silahkan coba lagi');
         }
 
         if ($createdId > 0) {
-            AdminController::notifyAdminsByPermission('pelanggan view', 'Request pelanggan baru', 'Request baru: ' . ($createdNama !== '' ? $createdNama : '-') . ' (' . ($createdNo !== '' ? $createdNo : '-') . ')', [
+            AdminController::notifyAdminsByPermission('pelanggan view', 'Request pelanggan baru', 'Request baru: '.($createdNama !== '' ? $createdNama : '-').' ('.($createdNo !== '' ? $createdNo : '-').')', [
                 'type' => 'request_pelanggan',
                 'badge_key' => 'request_pelanggan',
                 'pelanggan_id' => (string) $createdId,
@@ -326,9 +339,10 @@ class WebController extends Controller
     private function generateRequestNoLayanan()
     {
         do {
-            $candidate = 'RQ' . now()->format('ymd') . str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            $candidate = 'RQ'.now()->format('ymd').str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
             $exists = Pelanggan::where('no_layanan', $candidate)->exists();
         } while ($exists);
+
         return $candidate;
     }
 }

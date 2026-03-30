@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\SettingWeb;
 use App\Models\WaTemplate;
 use App\Models\WaTemplateMapping;
-use App\Support\WaMessageTrigger;
 use App\Services\WhatsApp\IvosightGateway;
+use App\Support\WaMessageTrigger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 
@@ -21,6 +21,7 @@ class WaConfigController extends Controller
     {
         $settingWeb = SettingWeb::first();
         $allTemplates = WaTemplate::query()->orderBy('name')->orderBy('template_id')->get();
+
         return view('wa-config.index', [
             'provider' => config('whatsapp.provider'),
             'base_url' => config('whatsapp.ivosight.base_url'),
@@ -60,7 +61,7 @@ class WaConfigController extends Controller
         ]);
 
         $settingWeb = SettingWeb::first();
-        if (!$settingWeb) {
+        if (! $settingWeb) {
             return redirect()->route('wa-config.index')->with('error', __('Data setting web belum tersedia.'));
         }
 
@@ -100,7 +101,7 @@ class WaConfigController extends Controller
 
     public function testConnection()
     {
-        $gateway = new IvosightGateway();
+        $gateway = new IvosightGateway;
         $report = $gateway->testConnection();
 
         return redirect()
@@ -226,6 +227,13 @@ class WaConfigController extends Controller
             'request.broadcast_message' => 'Pesan Broadcast',
             'request.tanggal_bayar' => 'Tanggal Bayar dari Request',
             'request.link_invoice' => 'Link Invoice dari Request',
+            'request.unpaid_count' => 'Total Tagihan (jumlah)',
+            'request.total_tunggakan' => 'Total Tagihan (nominal)',
+            'request.periode_list' => 'Periode Tagihan (list)',
+            'request.oldest_periode' => 'Periode Tertua',
+            'request.newest_periode' => 'Periode Terbaru',
+            'request.jumlah_bulan_tertunggak' => 'Jumlah Bulan Tertunggak',
+            'request.jumlah_total_tunggakan' => 'Jumlah Total Tunggakan',
             'setting.nama_perusahaan' => 'Nama Perusahaan',
             'setting.no_wa' => 'No WhatsApp Perusahaan',
             'setting.email' => 'Email Perusahaan',
