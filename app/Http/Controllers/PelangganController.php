@@ -2,38 +2,87 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Pelanggan;
-use App\Http\Requests\{StorePelangganRequest, UpdatePelangganRequest};
-use Yajra\DataTables\Facades\DataTables;
-use Image;
-use Illuminate\Support\Facades\DB;
+use App\Http\Requests\StorePelangganRequest;
+use App\Http\Requests\UpdatePelangganRequest;
 use App\Models\AreaCoverage;
-use App\Models\Package;
-use App\Models\Settingmikrotik;
-use Illuminate\Http\Request;
-use \RouterOS\Query;
-use \RouterOS\Client;
-use \RouterOS\Exceptions\ConnectException;
-use Alert;
-use App\Models\SettingWeb;
 use App\Models\BalanceHistory;
+use App\Models\Package;
+use App\Models\Pelanggan;
+use App\Models\Settingmikrotik;
+use App\Models\SettingWeb;
 use App\Models\Tagihan;
 use App\Models\Transaksi;
 use App\Models\TransaksiDetail;
+use App\Services\GenieAcsNbiService;
 use App\Services\InventoryStockService;
 use App\Services\TenantEntitlementService;
-use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\Str;
+use Image;
+use RouterOS\Client;
+use RouterOS\Exceptions\ConnectException;
+use RouterOS\Query;
+use Yajra\DataTables\Facades\DataTables;
 
 class PelangganController extends Controller
 {
+    private function genieacsExtractTenantIdTag(?array $device): ?int
+    {
+        $tags = data_get($device, '_tags');
+        if (! is_array($tags)) {
+            return null;
+        }
+        foreach ($tags as $t) {
+            $s = (string) $t;
+            if (str_starts_with($s, 'tenant_id:')) {
+                $val = trim(substr($s, strlen('tenant_id:')));
+                if ($val !== '' && ctype_digit($val)) {
+                    return (int) $val;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function genieacsExtractAppTag(?array $device): ?string
+    {
+        $tags = data_get($device, '_tags');
+        if (! is_array($tags)) {
+            return null;
+        }
+        foreach ($tags as $t) {
+            $s = (string) $t;
+            if (str_starts_with($s, 'app:')) {
+                return $s;
+            }
+        }
+
+        return null;
+    }
+
+    private function genieacsDeviceAllowedForTenant(?array $device, int $tenantId): bool
+    {
+        $deviceTenant = $this->genieacsExtractTenantIdTag($device);
+        if ($deviceTenant !== null && $deviceTenant !== $tenantId) {
+            return false;
+        }
+        $appTag = $this->genieacsExtractAppTag($device);
+        if ($appTag !== null && $appTag !== 'app:myrba-multi') {
+            return false;
+        }
+
+        return true;
+    }
+
     public function __construct()
     {
         $this->middleware('permission:pelanggan view')->only('index', 'show', 'requestIndex', 'requestMaterials');
         $this->middleware('permission:pelanggan create')->only('create', 'store');
-        $this->middleware('permission:pelanggan edit')->only('edit', 'update', 'requestMaterialsStore', 'requestMaterialsApprove');
+        $this->middleware('permission:pelanggan edit')->only('edit', 'update', 'requestMaterialsStore', 'requestMaterialsApprove', 'genieacsLink', 'genieacsUnlink', 'genieacsRefresh', 'genieacsReboot', 'genieacsSearch');
         $this->middleware('permission:pelanggan delete')->only('destroy');
     }
 
@@ -75,54 +124,55 @@ class PelangganController extends Controller
             $pelanggans = $pelanggans->where('pelanggans.tenant_id', $tenantId);
 
             $allowedAreas = getAllowedAreaCoverageIdsForUser();
-            if (!empty($allowedAreas)) {
+            if (! empty($allowedAreas)) {
                 $pelanggans = $pelanggans->whereIn('pelanggans.coverage_area', $allowedAreas);
             } else {
                 $pelanggans = $pelanggans->whereRaw('1 = 0');
             }
 
-            if (isset($area_coverage) && !empty($area_coverage)) {
+            if (isset($area_coverage) && ! empty($area_coverage)) {
                 if ($area_coverage != 'All') {
                     $pelanggans = $pelanggans->where('pelanggans.coverage_area', $area_coverage);
                 }
             }
 
-            if (isset($packagePilihan) && !empty($packagePilihan)) {
+            if (isset($packagePilihan) && ! empty($packagePilihan)) {
                 if ($packagePilihan != 'All') {
                     $pelanggans = $pelanggans->where('pelanggans.paket_layanan', $packagePilihan);
                 }
             }
 
-            if (isset($mikrotik) && !empty($mikrotik)) {
+            if (isset($mikrotik) && ! empty($mikrotik)) {
                 if ($mikrotik != 'All') {
                     $pelanggans = $pelanggans->where('pelanggans.router', $mikrotik);
                 }
             }
 
-            if (!empty($fromMonth) && !empty($toMonth)) {
-                $fromStart = $fromMonth . '-01 00:00:00';
-                $toStartTs = strtotime($toMonth . '-01');
-                $toEnd = date('Y-m-t', $toStartTs) . ' 23:59:59';
+            if (! empty($fromMonth) && ! empty($toMonth)) {
+                $fromStart = $fromMonth.'-01 00:00:00';
+                $toStartTs = strtotime($toMonth.'-01');
+                $toEnd = date('Y-m-t', $toStartTs).' 23:59:59';
                 $pelanggans = $pelanggans->whereBetween('pelanggans.tanggal_daftar', [$fromStart, $toEnd]);
             } else {
-                if (isset($tgl_daftar) && !empty($tgl_daftar) && $tgl_daftar != 'All') {
+                if (isset($tgl_daftar) && ! empty($tgl_daftar) && $tgl_daftar != 'All') {
                     $pelanggans = $pelanggans->whereRaw('DAY(pelanggans.tanggal_daftar) = ?', [$tgl_daftar]);
                 }
             }
 
-            if (isset($mode_user) && !empty($mode_user)) {
+            if (isset($mode_user) && ! empty($mode_user)) {
                 if ($mode_user != 'All') {
                     $pelanggans = $pelanggans->where('pelanggans.mode_user', $mode_user);
                 }
             }
 
-            if (isset($status) && !empty($status)) {
+            if (isset($status) && ! empty($status)) {
                 if ($status != 'All') {
                     $pelanggans = $pelanggans->where('pelanggans.status_berlangganan', $status);
                 }
             }
 
             $pelanggans = $pelanggans->orderBy('pelanggans.id', 'DESC')->get();
+
             return Datatables::of($pelanggans)
                 ->addIndexColumn()
                 ->addColumn('alamat', function ($row) {
@@ -132,7 +182,7 @@ class PelangganController extends Controller
                     return rupiah($row->balance);
                 })
                 ->addColumn('area_coverage', function ($row) {
-                    return $row->kode_area . '-' . $row->nama_area;
+                    return $row->kode_area.'-'.$row->nama_area;
                 })->addColumn('odc', function ($row) {
                     return $row->kode_odc;
                 })->addColumn('user_mikrotik', function ($row) {
@@ -141,11 +191,12 @@ class PelangganController extends Controller
                     } else {
                         return $row->user_pppoe;
                     }
+
                     return $row->user_static;
                 })->addColumn('odp', function ($row) {
                     return $row->kode_odp;
                 })->addColumn('package', function ($row) {
-                    return $row->nama_layanan . '-' . $row->harga;
+                    return $row->nama_layanan.'-'.$row->harga;
                 })->addColumn('settingmikrotik', function ($row) {
                     return $row->identitas_router;
                 })
@@ -159,19 +210,20 @@ class PelangganController extends Controller
         $x = DB::table('pelanggans')
             ->leftJoin('packages', 'pelanggans.paket_layanan', '=', 'packages.id')
             ->where('pelanggans.tenant_id', (int) (auth()->user()->tenant_id ?? 0))
-            ->when(!empty($allowedAreas), function ($q) use ($allowedAreas) {
+            ->when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
                 $q->whereIn('pelanggans.coverage_area', $allowedAreas);
             })
             ->where('pelanggans.status_berlangganan', 'Aktif')
             ->sum('packages.harga');
-        $areaCoverages = AreaCoverage::when(!empty($allowedAreas), function ($q) use ($allowedAreas) {
+        $areaCoverages = AreaCoverage::when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
             $q->whereIn('id', $allowedAreas);
         })->get();
+
         return view('pelanggans.index', [
             'areaCoverages' => $areaCoverages,
             'package' => $package,
             'router' => $router,
-            'pendapatan' => $x
+            'pendapatan' => $x,
         ]);
     }
 
@@ -215,9 +267,10 @@ class PelangganController extends Controller
             ->get();
 
         $approvedByName = null;
-        if (!empty($pelanggan->material_approved_by)) {
+        if (! empty($pelanggan->material_approved_by)) {
             $approvedByName = DB::table('users')->where('id', (int) $pelanggan->material_approved_by)->value('name');
         }
+
         return view('pelanggans.request-materials', compact('pelanggan', 'barangs', 'investorOwners', 'materials', 'approvedByName'));
     }
 
@@ -244,7 +297,7 @@ class PelangganController extends Controller
             }
         }
         $investorIds = array_values(array_unique(array_filter($investorIds)));
-        if (!empty($investorIds)) {
+        if (! empty($investorIds)) {
             if (count($investorIds) !== 1) {
                 return redirect()->back()->withInput()->with('error', 'Untuk pemasangan pelanggan, kepemilikan investor hanya boleh dari satu investor saja.');
             }
@@ -264,6 +317,7 @@ class PelangganController extends Controller
                 $stockQty = InventoryStockService::getOwnerQty($barangId, 'investor', $investorId);
                 if ($stockQty < $qty) {
                     $barangName = DB::table('barang')->where('id', $barangId)->value('nama_barang');
+
                     return redirect()->back()->withInput()->with('error', "Stok investor tidak mencukupi untuk {$barangName}.");
                 }
             }
@@ -283,12 +337,12 @@ class PelangganController extends Controller
                     'owner_type' => $ownerType,
                     'owner_user_id' => $ownerUserId ?: null,
                     'qty' => (int) $item['qty'],
-                    'notes' => !empty($item['notes']) ? trim((string) $item['notes']) : null,
+                    'notes' => ! empty($item['notes']) ? trim((string) $item['notes']) : null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
             }
-            if (!empty($rows)) {
+            if (! empty($rows)) {
                 DB::table('pelanggan_request_materials')->insert($rows);
             }
             DB::table('pelanggans')->where('id', (int) $pelanggan->id)->update([
@@ -333,26 +387,27 @@ class PelangganController extends Controller
         $allowedAreas = getAllowedAreaCoverageIdsForUser();
         $query = DB::table('pelanggans')
             ->leftJoin('packages', 'pelanggans.paket_layanan', '=', 'packages.id')
-            ->when(!empty($allowedAreas), function ($q) use ($allowedAreas) {
+            ->when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
                 $q->whereIn('pelanggans.coverage_area', $allowedAreas);
             })
             ->where('pelanggans.status_berlangganan', 'Aktif');
-        if (!empty($area_coverage) && $area_coverage !== 'All') {
+        if (! empty($area_coverage) && $area_coverage !== 'All') {
             $query->where('pelanggans.coverage_area', intval($area_coverage));
         }
-        if (!empty($packagePilihan) && $packagePilihan !== 'All') {
+        if (! empty($packagePilihan) && $packagePilihan !== 'All') {
             $query->where('pelanggans.paket_layanan', intval($packagePilihan));
         }
-        if (!empty($mikrotik) && $mikrotik !== 'All') {
+        if (! empty($mikrotik) && $mikrotik !== 'All') {
             $query->where('pelanggans.router', intval($mikrotik));
         }
-        if (!empty($tgl_daftar) && $tgl_daftar !== 'All') {
+        if (! empty($tgl_daftar) && $tgl_daftar !== 'All') {
             $query->whereRaw('DAY(pelanggans.tanggal_daftar) = ?', [$tgl_daftar]);
         }
-        if (!empty($mode_user) && $mode_user !== 'All') {
+        if (! empty($mode_user) && $mode_user !== 'All') {
             $query->where('pelanggans.mode_user', $mode_user);
         }
         $sum = $query->sum('packages.harga');
+
         return response()->json(['pendapatan' => rupiah($sum)]);
     }
 
@@ -394,19 +449,18 @@ class PelangganController extends Controller
                 $path = storage_path('app/public/uploads/photo_ktps/');
                 $filename = $request->file('photo_ktp')->hashName();
 
-                if (!file_exists($path)) {
+                if (! file_exists($path)) {
                     mkdir($path, 0777, true);
                 }
                 Image::make($request->file('photo_ktp')->getRealPath())->resize(500, 500, function ($constraint) {
                     $constraint->upsize();
                     $constraint->aspectRatio();
-                })->save($path . $filename);
+                })->save($path.$filename);
 
                 $attr['photo_ktp'] = $filename;
             }
 
             $newPelanggan = Pelanggan::create($attr);
-
 
             if ($request->has('generate_tagihan') && $request->generate_tagihan == '1') {
                 $paket = \App\Models\Package::find($newPelanggan->paket_layanan);
@@ -422,7 +476,7 @@ class PelangganController extends Controller
 
                 // Kode pembuatan tagihan sekarang ada DI DALAM blok if
                 $tagihan = Tagihan::create([
-                    'no_tagihan' => 'INV/' . date('Ymd') . '/' . strtoupper(Str::random(6)),
+                    'no_tagihan' => 'INV/'.date('Ymd').'/'.strtoupper(Str::random(6)),
                     'pelanggan_id' => $newPelanggan->id,
                     'periode' => \Carbon\Carbon::parse($newPelanggan->tanggal_daftar)->format('Y-m'),
                     'status_bayar' => 'Belum Bayar',
@@ -436,11 +490,10 @@ class PelangganController extends Controller
                     'created_by' => auth()->id(),
                 ]);
                 autoPayTagihanWithSaldo($newPelanggan->id);
-                
+
                 // Auto send WA notification if active
                 autoSendTagihanWa($tagihan->id);
             }
-
 
             applyReferralBonusIfEligible((int) $newPelanggan->id);
 
@@ -448,14 +501,14 @@ class PelangganController extends Controller
 
             try {
                 $getWaGatewayActive = getWaGatewayActive();
-                if ($getWaGatewayActive && $getWaGatewayActive->is_aktif === 'Yes' && $getWaGatewayActive->is_wa_welcome_active === 'Yes' && $newPelanggan->status_berlangganan === 'Aktif' && !empty($newPelanggan->no_wa)) {
+                if ($getWaGatewayActive && $getWaGatewayActive->is_aktif === 'Yes' && $getWaGatewayActive->is_wa_welcome_active === 'Yes' && $newPelanggan->status_berlangganan === 'Aktif' && ! empty($newPelanggan->no_wa)) {
                     $waResponse = sendNotifWa(
                         $getWaGatewayActive->api_key,
                         $newPelanggan,
                         'welcome_registration',
                         $newPelanggan->no_wa
                     );
-                    if (!isset($waResponse->status) || !($waResponse->status === true || $waResponse->status === 'true')) {
+                    if (! isset($waResponse->status) || ! ($waResponse->status === true || $waResponse->status === 'true')) {
                         $waWarning = $waResponse->message ?? 'Notifikasi WA pendaftaran gagal dikirim.';
                     }
                 }
@@ -470,15 +523,17 @@ class PelangganController extends Controller
 
             $successMessage = __('Pelanggan berhasil dibuat.');
             if ($waWarning) {
-                $successMessage .= ' ' . __('Notifikasi WA: ') . $waWarning;
+                $successMessage .= ' '.__('Notifikasi WA: ').$waWarning;
             }
+
             return redirect()
                 ->route('pelanggans.index')
                 ->with('success', $successMessage);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()->back()
-                ->with('error', 'Gagal menyimpan data pelanggan: ' . $e->getMessage())
+                ->with('error', 'Gagal menyimpan data pelanggan: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -486,11 +541,17 @@ class PelangganController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Pelanggan $pelanggan
      * @return \Illuminate\Http\Response
      */
     public function show(Pelanggan $pelanggan)
     {
+        $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+        abort_if((int) ($pelanggan->tenant_id ?? 0) !== $tenantId, 404);
+        $allowedAreas = getAllowedAreaCoverageIdsForUser();
+        if (! empty($allowedAreas) && ! in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
+            abort(404);
+        }
+
         // Mengambil data detail pelanggan seperti sebelumnya
         $detailPelanggan = DB::table('pelanggans')
             ->leftJoin('area_coverages', 'pelanggans.coverage_area', '=', 'area_coverages.id')
@@ -507,7 +568,34 @@ class PelangganController extends Controller
                 'packages.nama_layanan',
                 'packages.harga',
                 'settingmikrotiks.identitas_router'
-            )->where('pelanggans.id', $pelanggan->id)->first();
+            )
+            ->where('pelanggans.tenant_id', $tenantId)
+            ->where('pelanggans.id', $pelanggan->id)
+            ->first();
+
+        abort_if(! $detailPelanggan, 404);
+
+        $genieacsDevice = null;
+        $genieacsError = null;
+        if (! empty($detailPelanggan?->genieacs_device_id)) {
+            try {
+                $genieacsDevice = GenieAcsNbiService::getDevice((string) $detailPelanggan->genieacs_device_id, [
+                    '_id',
+                    '_lastInform',
+                    '_tags',
+                    'DeviceID.Manufacturer',
+                    'DeviceID.OUI',
+                    'DeviceID.ProductClass',
+                    'DeviceID.SerialNumber',
+                    'InternetGatewayDevice.DeviceInfo.Manufacturer',
+                    'InternetGatewayDevice.DeviceInfo.ModelName',
+                    'InternetGatewayDevice.DeviceInfo.SerialNumber',
+                ]);
+            } catch (\Throwable $e) {
+                $genieacsDevice = null;
+                $genieacsError = $e->getMessage();
+            }
+        }
 
         // Menghitung total pendapatan dari referral
         $totalPendapatanReferral = BalanceHistory::where('pelanggan_id', $pelanggan->id)
@@ -539,26 +627,237 @@ class PelangganController extends Controller
             'totalPendapatanReferral' => $totalPendapatanReferral,
             'jumlahPenggunaReferral' => $jumlahPenggunaReferral,
             'deviceReturns' => $deviceReturns,
+            'genieacsDevice' => $genieacsDevice,
+            'genieacsError' => $genieacsError,
         ]);
+    }
+
+    public function genieacsLink(Request $request, int $id)
+    {
+        $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+        $pelanggan = Pelanggan::query()->where('tenant_id', $tenantId)->where('id', $id)->firstOrFail();
+
+        $allowedAreas = getAllowedAreaCoverageIdsForUser();
+        if (! empty($allowedAreas) && ! in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
+            abort(404);
+        }
+
+        $deviceId = trim((string) $request->input('device_id', ''));
+        if ($deviceId === '') {
+            return redirect()->back()->with('error', 'Device ID wajib diisi.');
+        }
+
+        try {
+            $device = GenieAcsNbiService::getDevice($deviceId, ['_id', '_lastInform', '_tags']);
+            if (! $device) {
+                return redirect()->back()->with('error', 'Device tidak ditemukan di GenieACS.');
+            }
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Gagal konek ke GenieACS: '.$e->getMessage());
+        }
+
+        if (! $this->genieacsDeviceAllowedForTenant($device, $tenantId)) {
+            return redirect()->back()->with('error', 'Device sudah terdaftar untuk tenant/aplikasi lain.');
+        }
+
+        $deviceTenant = $this->genieacsExtractTenantIdTag($device);
+        if ($deviceTenant !== null && $deviceTenant !== $tenantId) {
+            return redirect()->back()->with('error', 'Device sudah terdaftar untuk tenant lain.');
+        }
+
+        $dup = DB::table('pelanggans')
+            ->whereNotNull('genieacs_device_id')
+            ->where('genieacs_device_id', $deviceId)
+            ->where('id', '<>', (int) $pelanggan->id)
+            ->first(['id', 'tenant_id', 'no_layanan', 'nama']);
+        if ($dup) {
+            return redirect()->back()->with('error', 'Device sudah di-link ke pelanggan lain.');
+        }
+
+        $pelanggan->genieacs_device_id = $deviceId;
+        $pelanggan->genieacs_last_inform_at = null;
+        if (isset($device['_lastInform']) && $device['_lastInform'] !== null && $device['_lastInform'] !== '') {
+            try {
+                $pelanggan->genieacs_last_inform_at = Carbon::parse($device['_lastInform']);
+            } catch (\Throwable $e) {
+                $pelanggan->genieacs_last_inform_at = null;
+            }
+        }
+        $pelanggan->genieacs_synced_at = now();
+        $pelanggan->save();
+
+        try {
+            if (! empty($pelanggan->no_layanan)) {
+                GenieAcsNbiService::tagDevice($deviceId, 'no_layanan:'.(string) $pelanggan->no_layanan);
+            }
+            GenieAcsNbiService::tagDevice($deviceId, 'pelanggan_id:'.(string) $pelanggan->id);
+            GenieAcsNbiService::tagDevice($deviceId, 'tenant_id:'.(string) $tenantId);
+            GenieAcsNbiService::tagDevice($deviceId, 'app:myrba-multi');
+        } catch (\Throwable $e) {
+        }
+
+        return redirect()->back()->with('success', 'Device berhasil di-link.');
+    }
+
+    public function genieacsUnlink(Request $request, int $id)
+    {
+        $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+        $pelanggan = Pelanggan::query()->where('tenant_id', $tenantId)->where('id', $id)->firstOrFail();
+
+        $allowedAreas = getAllowedAreaCoverageIdsForUser();
+        if (! empty($allowedAreas) && ! in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
+            abort(404);
+        }
+
+        $pelanggan->genieacs_device_id = null;
+        $pelanggan->genieacs_status_json = null;
+        $pelanggan->genieacs_last_inform_at = null;
+        $pelanggan->genieacs_synced_at = null;
+        $pelanggan->save();
+
+        return redirect()->back()->with('success', 'Link GenieACS dihapus.');
+    }
+
+    public function genieacsRefresh(Request $request, int $id)
+    {
+        $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+        $pelanggan = Pelanggan::query()->where('tenant_id', $tenantId)->where('id', $id)->firstOrFail();
+
+        $allowedAreas = getAllowedAreaCoverageIdsForUser();
+        if (! empty($allowedAreas) && ! in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
+            abort(404);
+        }
+
+        if (empty($pelanggan->genieacs_device_id)) {
+            return redirect()->back()->with('error', 'Device belum di-link.');
+        }
+
+        try {
+            $device = GenieAcsNbiService::getDevice((string) $pelanggan->genieacs_device_id, ['_id', '_tags']);
+            if (! $device || ! $this->genieacsDeviceAllowedForTenant($device, $tenantId)) {
+                return redirect()->back()->with('error', 'Device tidak valid untuk tenant/aplikasi ini. Silahkan relink.');
+            }
+            if ($this->genieacsExtractTenantIdTag($device) === null) {
+                return redirect()->back()->with('error', 'Device belum memiliki tag tenant_id. Silahkan relink.');
+            }
+            GenieAcsNbiService::refreshAll((string) $pelanggan->genieacs_device_id, true);
+            $pelanggan->genieacs_synced_at = now();
+            $pelanggan->save();
+
+            return redirect()->back()->with('success', 'Task refresh dikirim.');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Gagal enqueue task: '.$e->getMessage());
+        }
+    }
+
+    public function genieacsReboot(Request $request, int $id)
+    {
+        $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+        $pelanggan = Pelanggan::query()->where('tenant_id', $tenantId)->where('id', $id)->firstOrFail();
+
+        $allowedAreas = getAllowedAreaCoverageIdsForUser();
+        if (! empty($allowedAreas) && ! in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
+            abort(404);
+        }
+
+        if (empty($pelanggan->genieacs_device_id)) {
+            return redirect()->back()->with('error', 'Device belum di-link.');
+        }
+
+        try {
+            $device = GenieAcsNbiService::getDevice((string) $pelanggan->genieacs_device_id, ['_id', '_tags']);
+            if (! $device || ! $this->genieacsDeviceAllowedForTenant($device, $tenantId)) {
+                return redirect()->back()->with('error', 'Device tidak valid untuk tenant/aplikasi ini. Silahkan relink.');
+            }
+            if ($this->genieacsExtractTenantIdTag($device) === null) {
+                return redirect()->back()->with('error', 'Device belum memiliki tag tenant_id. Silahkan relink.');
+            }
+            GenieAcsNbiService::reboot((string) $pelanggan->genieacs_device_id, true);
+            $pelanggan->genieacs_synced_at = now();
+            $pelanggan->save();
+
+            return redirect()->back()->with('success', 'Task reboot dikirim.');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Gagal enqueue task: '.$e->getMessage());
+        }
+    }
+
+    public function genieacsSearch(Request $request, int $id)
+    {
+        $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+        $pelanggan = Pelanggan::query()->where('tenant_id', $tenantId)->where('id', $id)->firstOrFail();
+
+        $allowedAreas = getAllowedAreaCoverageIdsForUser();
+        if (! empty($allowedAreas) && ! in_array((int) ($pelanggan->coverage_area ?? 0), $allowedAreas, true)) {
+            abort(404);
+        }
+
+        $serial = trim((string) $request->query('serial', ''));
+        if ($serial === '') {
+            return response()->json([]);
+        }
+
+        try {
+            $list = GenieAcsNbiService::findDevicesBySerial($serial, 10);
+            $filtered = [];
+            $ids = [];
+            foreach ($list as $d) {
+                if (! is_array($d)) {
+                    continue;
+                }
+                if (! $this->genieacsDeviceAllowedForTenant($d, $tenantId)) {
+                    continue;
+                }
+                $deviceTenant = $this->genieacsExtractTenantIdTag($d);
+                if ($deviceTenant !== null && $deviceTenant !== $tenantId) {
+                    continue;
+                }
+                $idVal = (string) (data_get($d, '_id') ?? '');
+                if ($idVal !== '') {
+                    $ids[] = $idVal;
+                }
+                $filtered[] = $d;
+            }
+
+            if (! empty($ids)) {
+                $used = DB::table('pelanggans')
+                    ->whereIn('genieacs_device_id', $ids)
+                    ->where('tenant_id', '<>', $tenantId)
+                    ->pluck('genieacs_device_id')
+                    ->all();
+                if (! empty($used)) {
+                    $usedMap = array_fill_keys($used, true);
+                    $filtered = array_values(array_filter($filtered, function ($d) use ($usedMap) {
+                        $idVal = (string) (data_get($d, '_id') ?? '');
+
+                        return $idVal === '' || ! isset($usedMap[$idVal]);
+                    }));
+                }
+            }
+
+            return response()->json($filtered);
+        } catch (\Throwable $e) {
+            return response()->json([]);
+        }
     }
 
     public function edit(Pelanggan $pelanggan)
     {
         $pelanggan->load('area_coverage:id,kode_area', 'odc:id,kode_odc', 'odp:id,kode_odc', 'package:id,nama_layanan', 'settingmikrotik:id,identitas_router');
-        $dataOdcs = DB::table('odcs')->where('wilayah_odc',  $pelanggan->coverage_area)->get();
-        $dataodps = DB::table('odps')->where('kode_odc',  $pelanggan->odc)->get();
+        $dataOdcs = DB::table('odcs')->where('wilayah_odc', $pelanggan->coverage_area)->get();
+        $dataodps = DB::table('odps')->where('kode_odc', $pelanggan->odc)->get();
         $dataPort = DB::table('odps')->where('id', $pelanggan->odp)->first();
         $array = [];
         if ($dataPort) {
             $jmlPort = $dataPort->jumlah_port;
-            for ($x = 1; $x <=  $jmlPort; $x++) {
+            for ($x = 1; $x <= $jmlPort; $x++) {
                 // find customer
                 $cek = DB::table('pelanggans')
                     ->where('odp', $pelanggan->odp)
                     ->where('no_port_odp', $x)
                     ->first();
                 if ($cek) {
-                    $array[$x] = $cek->no_layanan . ' - ' . $cek->nama;
+                    $array[$x] = $cek->no_layanan.' - '.$cek->nama;
                 } else {
                     $array[$x] = 'Kosong';
                 }
@@ -574,8 +873,8 @@ class PelangganController extends Controller
                     'port' => (int) $router->port,
                 ]);
             } catch (ConnectException $e) {
-                echo $e->getMessage() . PHP_EOL;
-                die();
+                echo $e->getMessage().PHP_EOL;
+                exit();
             }
             $query = new Query('/ppp/secret/print');
             $secretPPoe = $client->query($query)->read();
@@ -592,8 +891,8 @@ class PelangganController extends Controller
                     'port' => (int) $router->port,
                 ]);
             } catch (ConnectException $e) {
-                echo $e->getMessage() . PHP_EOL;
-                die();
+                echo $e->getMessage().PHP_EOL;
+                exit();
             }
             $querystatik = (new Query('/queue/simple/print'))
                 ->where('dynamic', 'false');
@@ -601,6 +900,7 @@ class PelangganController extends Controller
         } else {
             $statik = [];
         }
+
         return view('pelanggans.edit', compact('pelanggan', 'dataOdcs', 'dataodps', 'array', 'secretPPoe', 'statik'));
     }
 
@@ -608,7 +908,6 @@ class PelangganController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Pelanggan $pelanggan
      * @return \Illuminate\Http\Response
      */
     public function update(UpdatePelangganRequest $request, Pelanggan $pelanggan)
@@ -643,18 +942,18 @@ class PelangganController extends Controller
             $path = storage_path('app/public/uploads/photo_ktps/');
             $filename = $request->file('photo_ktp')->hashName();
 
-            if (!file_exists($path)) {
+            if (! file_exists($path)) {
                 mkdir($path, 0777, true);
             }
 
             Image::make($request->file('photo_ktp')->getRealPath())->resize(500, 500, function ($constraint) {
                 $constraint->upsize();
                 $constraint->aspectRatio();
-            })->save($path . $filename);
+            })->save($path.$filename);
 
             // delete old photo_ktp from storage
-            if ($pelanggan->photo_ktp != null && file_exists($path . $pelanggan->photo_ktp)) {
-                unlink($path . $pelanggan->photo_ktp);
+            if ($pelanggan->photo_ktp != null && file_exists($path.$pelanggan->photo_ktp)) {
+                unlink($path.$pelanggan->photo_ktp);
             }
 
             $attr['photo_ktp'] = $filename;
@@ -681,7 +980,7 @@ class PelangganController extends Controller
 
         try {
             $requestedPackageId = isset($attr['paket_layanan']) ? (int) $attr['paket_layanan'] : null;
-            $currentPackageId = !empty($pelanggan->paket_layanan) ? (int) $pelanggan->paket_layanan : null;
+            $currentPackageId = ! empty($pelanggan->paket_layanan) ? (int) $pelanggan->paket_layanan : null;
             if ($requestedPackageId && $currentPackageId && $requestedPackageId !== $currentPackageId) {
                 $unpaidCount = DB::table('tagihans')
                     ->where('pelanggan_id', (int) $pelanggan->id)
@@ -700,7 +999,7 @@ class PelangganController extends Controller
                     ->where('periode', $periodeBerjalan)
                     ->exists();
 
-                if (!$tagihanExists) {
+                if (! $tagihanExists) {
                     $shouldCreateTagihan = (($pelanggan->is_generate_tagihan ?? 'Yes') === 'Yes');
                     $createTagihanPeriode = $periodeBerjalan;
                     $attr['pending_paket_layanan'] = null;
@@ -708,7 +1007,7 @@ class PelangganController extends Controller
                     $attr['pending_paket_requested_by'] = null;
                     $attr['pending_paket_requested_at'] = null;
                     $attr['pending_paket_note'] = null;
-                    $packageNotice = 'Paket berhasil diubah. Tagihan periode ' . $periodeBerjalan . ' dibuat mengikuti paket baru.';
+                    $packageNotice = 'Paket berhasil diubah. Tagihan periode '.$periodeBerjalan.' dibuat mengikuti paket baru.';
                 } else {
                     $next = myrbaNextBillingPeriodForPelanggan($tanggalDaftarRaw, $jatuhTempo, now());
                     $effectivePeriode = $next['periode'] ?? now()->addMonth()->format('Y-m');
@@ -717,7 +1016,7 @@ class PelangganController extends Controller
                     $attr['pending_paket_effective_periode'] = $effectivePeriode;
                     $attr['pending_paket_requested_by'] = auth()->id();
                     $attr['pending_paket_requested_at'] = now();
-                    $packageNotice = 'Paket dijadwalkan mulai periode ' . $effectivePeriode . '.';
+                    $packageNotice = 'Paket dijadwalkan mulai periode '.$effectivePeriode.'.';
                 }
             }
 
@@ -731,7 +1030,7 @@ class PelangganController extends Controller
                 }
             });
         } catch (\Throwable $e) {
-            return redirect()->back()->withInput()->with('error', 'Validasi pelanggan gagal: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Validasi pelanggan gagal: '.$e->getMessage());
         }
 
         if ($statusLama === 'Menunggu' && $pelanggan->status_berlangganan === 'Aktif') {
@@ -746,11 +1045,12 @@ class PelangganController extends Controller
 
         $successMessage = __('The pelanggan was updated successfully.');
         if ($waWarning) {
-            $successMessage .= ' ' . __('Notifikasi WA: ') . $waWarning;
+            $successMessage .= ' '.__('Notifikasi WA: ').$waWarning;
         }
         if ($packageNotice) {
-            $successMessage .= ' ' . $packageNotice;
+            $successMessage .= ' '.$packageNotice;
         }
+
         return redirect()
             ->route('pelanggans.index')
             ->with('success', $successMessage);
@@ -759,7 +1059,7 @@ class PelangganController extends Controller
     private function createTagihanForPaketChange(int $pelangganId, string $periode, int $packageId): void
     {
         $periode = trim($periode);
-        if (!preg_match('/^\d{4}-\d{2}$/', $periode)) {
+        if (! preg_match('/^\d{4}-\d{2}$/', $periode)) {
             return;
         }
         $exists = DB::table('tagihans')->where('pelanggan_id', $pelangganId)->where('periode', $periode)->exists();
@@ -767,14 +1067,14 @@ class PelangganController extends Controller
             return;
         }
         $pelanggan = DB::table('pelanggans')->where('id', $pelangganId)->lockForUpdate()->first();
-        if (!$pelanggan) {
+        if (! $pelanggan) {
             return;
         }
         if (($pelanggan->is_generate_tagihan ?? 'Yes') !== 'Yes') {
             return;
         }
         $paket = DB::table('packages')->where('id', $packageId)->first();
-        if (!$paket) {
+        if (! $paket) {
             return;
         }
         $harga = (int) ($paket->harga ?? 0);
@@ -782,7 +1082,7 @@ class PelangganController extends Controller
         $nominalPpn = $ppn === 'Yes' ? (int) round($harga * 0.11) : 0;
         $totalBayar = $harga + $nominalPpn;
 
-        $noTagihan = 'INV-SSL-' . Str::upper(Str::random(10));
+        $noTagihan = 'INV-SSL-'.Str::upper(Str::random(10));
         DB::table('tagihans')->insert([
             'no_tagihan' => $noTagihan,
             'pelanggan_id' => $pelangganId,
@@ -805,7 +1105,6 @@ class PelangganController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Pelanggan $pelanggan
      * @return \Illuminate\Http\Response
      */
     public function destroy(Pelanggan $pelanggan)
@@ -813,8 +1112,8 @@ class PelangganController extends Controller
         try {
             $path = storage_path('app/public/uploads/photo_ktps/');
 
-            if ($pelanggan->photo_ktp != null && file_exists($path . $pelanggan->photo_ktp)) {
-                unlink($path . $pelanggan->photo_ktp);
+            if ($pelanggan->photo_ktp != null && file_exists($path.$pelanggan->photo_ktp)) {
+                unlink($path.$pelanggan->photo_ktp);
             }
 
             $pelanggan->delete();
@@ -837,7 +1136,7 @@ class PelangganController extends Controller
                 ->where('id', $pelanggan_id)
                 ->first();
             $client = $pelanggan ? setRouteTagihanByPelanggan($pelanggan->router) : null;
-            if (!$client) {
+            if (! $client) {
                 return redirect()
                     ->route('pelanggans.index')
                     ->with('error', __('Router pelanggan tidak ditemukan.'));
@@ -847,7 +1146,7 @@ class PelangganController extends Controller
             $queryGet = (new Query('/queue/simple/print'))
                 ->where('name', $user_static);
             $data = $client->query($queryGet)->read();
-            if (empty($data) || !isset($data[0]['target'])) {
+            if (empty($data) || ! isset($data[0]['target'])) {
                 return redirect()
                     ->route('pelanggans.index')
                     ->with('error', __('User static tidak ditemukan di router.'));
@@ -864,12 +1163,13 @@ class PelangganController extends Controller
             $affected = DB::table('pelanggans')
                 ->where('id', $pelanggan_id)
                 ->update(['status_berlangganan' => 'Non Aktif']);
+
             return redirect()
                 ->route('pelanggans.index')
                 ->with('success', __('Internet pelanggan berhasil di set Expired'));
         } catch (ConnectException $e) {
-            echo $e->getMessage() . PHP_EOL;
-            die();
+            echo $e->getMessage().PHP_EOL;
+            exit();
         }
     }
 
@@ -881,7 +1181,7 @@ class PelangganController extends Controller
                 ->where('id', $pelanggan_id)
                 ->first();
             $client = $pelanggan ? setRouteTagihanByPelanggan($pelanggan->router) : null;
-            if (!$client) {
+            if (! $client) {
                 return redirect()
                     ->route('pelanggans.index')
                     ->with('error', __('Router pelanggan tidak ditemukan.'));
@@ -890,7 +1190,7 @@ class PelangganController extends Controller
             $queryGet = (new Query('/queue/simple/print'))
                 ->where('name', $user_static);
             $data = $client->query($queryGet)->read();
-            if (empty($data) || !isset($data[0]['target'])) {
+            if (empty($data) || ! isset($data[0]['target'])) {
                 return redirect()
                     ->route('pelanggans.index')
                     ->with('error', __('User static tidak ditemukan di router.'));
@@ -914,12 +1214,13 @@ class PelangganController extends Controller
             $affected = DB::table('pelanggans')
                 ->where('id', $pelanggan_id)
                 ->update(['status_berlangganan' => 'Aktif']);
+
             return redirect()
                 ->route('pelanggans.index')
                 ->with('success', __('Internet pelanggan berhasil di set Tidak Expired 2'));
         } catch (ConnectException $e) {
-            echo $e->getMessage() . PHP_EOL;
-            die();
+            echo $e->getMessage().PHP_EOL;
+            exit();
         }
     }
 
@@ -931,7 +1232,7 @@ class PelangganController extends Controller
                 ->where('id', $pelanggan_id)
                 ->first();
             $client = $pelanggan ? setRouteTagihanByPelanggan($pelanggan->router) : null;
-            if (!$client) {
+            if (! $client) {
                 return redirect()
                     ->route('pelanggans.index')
                     ->with('error', __('Router pelanggan tidak ditemukan.'));
@@ -939,7 +1240,7 @@ class PelangganController extends Controller
             $queryGet = (new Query('/ppp/secret/print'))
                 ->where('name', $user_pppoe);
             $data = $client->query($queryGet)->read();
-            if (empty($data) || !isset($data[0]['.id'])) {
+            if (empty($data) || ! isset($data[0]['.id'])) {
                 return redirect()
                     ->route('pelanggans.index')
                     ->with('error', __('User PPPoE tidak ditemukan di router.'));
@@ -957,7 +1258,7 @@ class PelangganController extends Controller
                 ->where('name', $user_pppoe);
             $dataActive = $client->query($queryGet)->read();
             // remove session
-            if (!empty($dataActive) && isset($dataActive[0]['.id'])) {
+            if (! empty($dataActive) && isset($dataActive[0]['.id'])) {
                 $idActive = $dataActive[0]['.id'];
                 $queryDelete = (new Query('/ppp/active/remove'))
                     ->equal('.id', $idActive);
@@ -972,8 +1273,8 @@ class PelangganController extends Controller
                 ->route('pelanggans.index')
                 ->with('success', __('Internet pelanggan berhasil di set Expired'));
         } catch (ConnectException $e) {
-            echo $e->getMessage() . PHP_EOL;
-            die();
+            echo $e->getMessage().PHP_EOL;
+            exit();
         }
     }
 
@@ -987,7 +1288,7 @@ class PelangganController extends Controller
                 ->where('pelanggans.id', $pelanggan_id)
                 ->first();
             $client = $pelangganData ? setRouteTagihanByPelanggan($pelangganData->router) : null;
-            if (!$client) {
+            if (! $client) {
                 return redirect()
                     ->route('pelanggans.index')
                     ->with('error', __('Router pelanggan tidak ditemukan.'));
@@ -995,7 +1296,7 @@ class PelangganController extends Controller
             $queryGet = (new Query('/ppp/secret/print'))
                 ->where('name', $user_pppoe);
             $data = $client->query($queryGet)->read();
-            if (empty($data) || !isset($data[0]['.id'])) {
+            if (empty($data) || ! isset($data[0]['.id'])) {
                 return redirect()
                     ->route('pelanggans.index')
                     ->with('error', __('User PPPoE tidak ditemukan di router.'));
@@ -1015,7 +1316,7 @@ class PelangganController extends Controller
                 ->where('name', $user_pppoe);
             $data = $client->query($queryGet)->read();
             // remove session
-            if (!empty($data) && isset($data[0]['.id'])) {
+            if (! empty($data) && isset($data[0]['.id'])) {
                 $idActive = $data[0]['.id'];
                 $queryDelete = (new Query('/ppp/active/remove'))
                     ->equal('.id', $idActive);
@@ -1031,21 +1332,23 @@ class PelangganController extends Controller
                 ->route('pelanggans.index')
                 ->with('success', __('Internet pelanggan berhasil di set Tidak Expired'));
         } catch (ConnectException $e) {
-            echo $e->getMessage() . PHP_EOL;
-            die();
+            echo $e->getMessage().PHP_EOL;
+            exit();
         }
     }
 
     public function getTableArea($id)
     {
         $allowedAreas = getAllowedAreaCoverageIdsForUser();
-        if (!in_array((int) $id, $allowedAreas, true)) {
+        if (! in_array((int) $id, $allowedAreas, true)) {
             $message = 'Tidak diizinkan';
             $data = [];
+
             return response()->json(compact('message', 'data'), 403);
         }
         $data = DB::table('pelanggans')->where('coverage_area', $id)->get();
         $message = 'Berhasil mengambil data kota';
+
         return response()->json(compact('message', 'data'));
     }
 
@@ -1053,6 +1356,7 @@ class PelangganController extends Controller
     {
         $data = DB::table('pelanggans')->where('odc', $id)->get();
         $message = 'Berhasil mengambil data kota';
+
         return response()->json(compact('message', 'data'));
     }
 
@@ -1060,6 +1364,7 @@ class PelangganController extends Controller
     {
         $data = DB::table('pelanggans')->where('odp', $id)->get();
         $message = 'Berhasil mengambil data kota';
+
         return response()->json(compact('message', 'data'));
     }
 
@@ -1093,17 +1398,17 @@ class PelangganController extends Controller
         }
 
         $investorIds = $materials->where('owner_type', 'investor')->pluck('owner_user_id')->filter()->map(fn ($v) => (int) $v)->unique()->values()->all();
-        if (!empty($investorIds) && count($investorIds) !== 1) {
+        if (! empty($investorIds) && count($investorIds) !== 1) {
             throw new \RuntimeException('Material pemasangan hanya boleh dari satu investor.');
         }
 
-        $kode = 'TR-OUT-REQ-' . date('YmdHis') . '-' . (int) $pelanggan->id;
+        $kode = 'TR-OUT-REQ-'.date('YmdHis').'-'.(int) $pelanggan->id;
         $transaksi = Transaksi::create([
             'user_id' => auth()->id(),
             'kode_transaksi' => $kode,
             'tanggal_transaksi' => now()->toDateString(),
             'jenis_transaksi' => 'out',
-            'keterangan' => 'Pemasangan baru atas nama ' . ($pelanggan->nama ?? '-'),
+            'keterangan' => 'Pemasangan baru atas nama '.($pelanggan->nama ?? '-'),
         ]);
 
         foreach ($materials as $m) {
@@ -1117,7 +1422,7 @@ class PelangganController extends Controller
             }
             $pricing = InventoryStockService::getOwnerPricing($barangId, $ownerType, $ownerUserId ?: null);
             $ok = InventoryStockService::decrease($barangId, $ownerType, $ownerUserId ?: null, $qty);
-            if (!$ok) {
+            if (! $ok) {
                 $barangName = DB::table('barang')->where('id', $barangId)->value('nama_barang');
                 $ownerName = $ownerUserId ? DB::table('users')->where('id', $ownerUserId)->value('name') : null;
                 $ownerLabel = InventoryStockService::ownerLabel($ownerType, $ownerName);
@@ -1139,14 +1444,14 @@ class PelangganController extends Controller
             ]);
         }
 
-        if (!empty($investorIds)) {
+        if (! empty($investorIds)) {
             $this->attachPelangganToInvestorShare((int) $pelanggan->id, (int) $investorIds[0]);
         }
     }
 
     private function attachPelangganToInvestorShare(int $pelangganId, int $investorUserId): void
     {
-        if (!DB::getSchemaBuilder()->hasTable('investor_share_rules') || !DB::getSchemaBuilder()->hasTable('investor_share_rule_pelanggans')) {
+        if (! DB::getSchemaBuilder()->hasTable('investor_share_rules') || ! DB::getSchemaBuilder()->hasTable('investor_share_rule_pelanggans')) {
             return;
         }
         $existing = DB::table('investor_share_rule_pelanggans as rp')
@@ -1164,7 +1469,7 @@ class PelangganController extends Controller
             ->orderByRaw("CASE WHEN rule_type = 'per_customer' THEN 0 ELSE 1 END")
             ->orderBy('id')
             ->first();
-        if (!$rule) {
+        if (! $rule) {
             throw new \RuntimeException('Rule bagi hasil investor belum tersedia untuk investor ini.');
         }
         DB::table('investor_share_rule_pelanggans')->updateOrInsert(
@@ -1186,7 +1491,7 @@ class PelangganController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __('Tagihan status updated successfully.')
+            'message' => __('Tagihan status updated successfully.'),
         ]);
     }
 
@@ -1197,6 +1502,7 @@ class PelangganController extends Controller
             ->orWhere('no_layanan', 'LIKE', "%{$search}%")
             ->limit(10)
             ->get(['id', 'nama', 'no_layanan']);
+
         return response()->json($pelanggans);
     }
 
@@ -1206,9 +1512,9 @@ class PelangganController extends Controller
             ->select('pelanggans.*', 'packages.nama_layanan', 'packages.harga')
             ->where('pelanggans.id', $id)
             ->firstOrFail();
-        
+
         $settingWeb = SettingWeb::first();
-        
+
         return view('pelanggans.print_surat', compact('data', 'settingWeb'));
     }
 }

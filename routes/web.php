@@ -169,6 +169,11 @@ Route::middleware(['auth', 'web'])->group(function () {
             ->name('pelanggans.setToExpiredStatic');
         Route::get('setNonToExpiredStatic/{id}/{user_static}', 'setNonToExpiredStatic')
             ->name('pelanggans.setNonToExpiredStatic');
+        Route::post('pelanggans/{id}/genieacs/link', 'genieacsLink')->name('pelanggans.genieacs.link');
+        Route::post('pelanggans/{id}/genieacs/refresh', 'genieacsRefresh')->name('pelanggans.genieacs.refresh');
+        Route::post('pelanggans/{id}/genieacs/reboot', 'genieacsReboot')->name('pelanggans.genieacs.reboot');
+        Route::post('pelanggans/{id}/genieacs/unlink', 'genieacsUnlink')->name('pelanggans.genieacs.unlink');
+        Route::get('pelanggans/{id}/genieacs/search', 'genieacsSearch')->name('pelanggans.genieacs.search');
         Route::get('getTableArea/{id}', 'getTableArea')->name('api.getTableArea');
         Route::get('getTableOdc/{id}', 'getTableOdc')->name('api.getTableOdc');
         Route::get('getTableOdp/{id}', 'getTableOdp')->name('api.getTableOdp');

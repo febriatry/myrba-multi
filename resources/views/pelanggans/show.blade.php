@@ -73,6 +73,10 @@
                                         role="tab" aria-controls="layanan" aria-selected="true">Data Layanan</a>
                                 </li>
                                 <li class="nav-item">
+                                    <a class="nav-link" id="genieacs-tab" data-bs-toggle="tab" href="#genieacs" role="tab"
+                                        aria-controls="genieacs" aria-selected="false">GenieACS</a>
+                                </li>
+                                <li class="nav-item">
                                     <a class="nav-link" id="keuangan-tab" data-bs-toggle="tab" href="#keuangan"
                                         role="tab" aria-controls="keuangan" aria-selected="false">Keuangan &
                                         Referral</a>
@@ -131,6 +135,72 @@
                                             <td>{{ $pelanggan->no_port_odp }}</td>
                                         </tr>
                                     </table>
+                                </div>
+
+                                <div class="tab-pane fade" id="genieacs" role="tabpanel" aria-labelledby="genieacs-tab">
+                                    <h5 class="mb-3">GenieACS</h5>
+
+                                    @if (!empty($genieacsError))
+                                        <div class="alert alert-danger">{{ __('GenieACS error: ') . $genieacsError }}</div>
+                                    @endif
+
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label">Device ID</label>
+                                            <form method="POST" action="{{ route('pelanggans.genieacs.link', (int) $pelanggan->id) }}" class="d-flex gap-2">
+                                                @csrf
+                                                <input name="device_id" id="genieacsDeviceId" class="form-control" value="{{ old('device_id', (string) ($pelanggan->genieacs_device_id ?? '')) }}" placeholder="contoh: 202BC1-BM632w-000000" />
+                                                <button class="btn btn-primary">{{ !empty($pelanggan->genieacs_device_id) ? 'Update' : 'Link' }}</button>
+                                            </form>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label">Cari by Serial</label>
+                                            <input id="genieacsSerial" class="form-control" placeholder="serial number (enter untuk cari)" />
+                                            <div class="list-group mt-2" id="genieacsSearchList" style="display:none"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex gap-2 flex-wrap mt-3">
+                                        @if (!empty($pelanggan->genieacs_device_id))
+                                            <form method="POST" action="{{ route('pelanggans.genieacs.refresh', (int) $pelanggan->id) }}">
+                                                @csrf
+                                                <button class="btn btn-outline-primary" type="submit">Refresh</button>
+                                            </form>
+                                            <form method="POST" action="{{ route('pelanggans.genieacs.reboot', (int) $pelanggan->id) }}">
+                                                @csrf
+                                                <button class="btn btn-outline-warning" type="submit" onclick="return confirm('Reboot device?');">Reboot</button>
+                                            </form>
+                                            <form method="POST" action="{{ route('pelanggans.genieacs.unlink', (int) $pelanggan->id) }}">
+                                                @csrf
+                                                <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Hapus link GenieACS?');">Unlink</button>
+                                            </form>
+                                        @endif
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <table class="table table-hover table-striped">
+                                            <tr>
+                                                <td class="fw-bold" width="40%">Device ID</td>
+                                                <td>{{ (string) ($pelanggan->genieacs_device_id ?? '-') }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">Last Inform</td>
+                                                <td>{{ data_get($genieacsDevice, '_lastInform') ?: '-' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">Manufacturer</td>
+                                                <td>{{ data_get($genieacsDevice, 'InternetGatewayDevice.DeviceInfo.Manufacturer') ?: data_get($genieacsDevice, 'DeviceID.Manufacturer') ?: '-' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">Model</td>
+                                                <td>{{ data_get($genieacsDevice, 'InternetGatewayDevice.DeviceInfo.ModelName') ?: '-' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-bold">Serial</td>
+                                                <td>{{ data_get($genieacsDevice, 'InternetGatewayDevice.DeviceInfo.SerialNumber') ?: data_get($genieacsDevice, 'DeviceID.SerialNumber') ?: '-' }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
                                 </div>
 
                                 <div class="tab-pane fade" id="keuangan" role="tabpanel" aria-labelledby="keuangan-tab">
@@ -297,3 +367,51 @@
         </div>
     </div>
 @endsection
+
+@push('js')
+    <script>
+        (function () {
+            const serialInput = document.getElementById('genieacsSerial');
+            const list = document.getElementById('genieacsSearchList');
+            const deviceInput = document.getElementById('genieacsDeviceId');
+            if (!serialInput || !list || !deviceInput) return;
+
+            function hideList() {
+                list.style.display = 'none';
+                list.innerHTML = '';
+            }
+
+            serialInput.addEventListener('keydown', async function (e) {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                const sn = (serialInput.value || '').trim();
+                if (!sn) return hideList();
+                const url = "{{ route('pelanggans.genieacs.search', (int) $pelanggan->id) }}" + "?serial=" + encodeURIComponent(sn);
+                try {
+                    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                    const data = await res.json();
+                    list.innerHTML = '';
+                    if (!Array.isArray(data) || data.length < 1) return hideList();
+                    for (const d of data.slice(0, 10)) {
+                        const id = (d && d._id) ? String(d._id) : '';
+                        if (!id) continue;
+                        const item = document.createElement('button');
+                        item.type = 'button';
+                        item.className = 'list-group-item list-group-item-action';
+                        const last = (d && d._lastInform) ? String(d._lastInform) : '';
+                        const serial = (d && d.DeviceID && d.DeviceID.SerialNumber) ? String(d.DeviceID.SerialNumber) : '';
+                        item.textContent = id + (serial ? (' | ' + serial) : '') + (last ? (' | ' + last) : '');
+                        item.addEventListener('click', function () {
+                            deviceInput.value = id;
+                            hideList();
+                        });
+                        list.appendChild(item);
+                    }
+                    list.style.display = 'block';
+                } catch (err) {
+                    hideList();
+                }
+            });
+        })();
+    </script>
+@endpush
