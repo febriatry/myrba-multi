@@ -6,6 +6,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -19,6 +20,7 @@ class PlatformTenantSuperAdminController extends Controller
     public function index(Tenant $tenant)
     {
         $tenantId = (int) $tenant->id;
+        $this->ensureTenantSuperAdminHasAllPermissions($tenantId);
 
         $admins = DB::table('model_has_roles as m')
             ->join('roles as r', 'r.id', '=', 'm.role_id')
@@ -57,6 +59,7 @@ class PlatformTenantSuperAdminController extends Controller
                 'password' => bcrypt((string) $validated['password']),
             ]);
 
+            $this->ensureTenantSuperAdminHasAllPermissions($tenantId);
             app(PermissionRegistrar::class)->setPermissionsTeamId($tenantId);
             $role = Role::findOrCreate('Super Admin', 'web');
             $user->assignRole($role);
@@ -89,5 +92,19 @@ class PlatformTenantSuperAdminController extends Controller
         app(PermissionRegistrar::class)->setPermissionsTeamId(null);
 
         return redirect()->back()->with('success', 'Role Super Admin berhasil dihapus dari user.');
+    }
+
+    private function ensureTenantSuperAdminHasAllPermissions(int $tenantId): void
+    {
+        if ($tenantId < 1) {
+            return;
+        }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->setPermissionsTeamId($tenantId);
+        $role = Role::findOrCreate('Super Admin', 'web');
+        $role->syncPermissions(Permission::all());
+        app(PermissionRegistrar::class)->setPermissionsTeamId(null);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }
