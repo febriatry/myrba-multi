@@ -2162,6 +2162,9 @@ function recordTripayUsageLog(int $tenantId, string $merchantRef, array $attrs =
     if (! class_exists(\App\Models\TripayUsageLog::class)) {
         return;
     }
+    if (! \Illuminate\Support\Facades\Schema::hasTable('tripay_usage_logs')) {
+        return;
+    }
 
     $gatewayMode = (string) ($attrs['gateway_mode'] ?? 'owner');
     $defaults = [

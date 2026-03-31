@@ -7,6 +7,7 @@ use App\Models\TenantPlan;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PlatformOwnerDashboardController extends Controller
 {
@@ -91,54 +92,62 @@ class PlatformOwnerDashboardController extends Controller
             return ($b['amount'] <=> $a['amount']) ?: ($b['wa_sent'] <=> $a['wa_sent']);
         });
 
-        $tripayBase = DB::table('tripay_usage_logs as l')
-            ->leftJoin('tenants as t', 't.id', '=', 'l.tenant_id')
-            ->where('l.gateway_mode', 'owner')
-            ->where('l.status', 'PAID')
-            ->whereBetween('l.paid_at', [$start, $end]);
-
-        $tripayTotal = (int) (clone $tripayBase)->count();
-        $tripayPaidTotal = $tripayTotal;
-        $tripayPaidAmount = (int) (clone $tripayBase)->sum('l.amount');
-
-        $tripayByTenant = (clone $tripayBase)
-            ->select(
-                'l.tenant_id',
-                't.code as tenant_code',
-                't.plan_id',
-                DB::raw('COUNT(*) as total'),
-                DB::raw("SUM(CASE WHEN l.status = 'PAID' THEN 1 ELSE 0 END) as paid_total"),
-                DB::raw("SUM(CASE WHEN l.status = 'PAID' THEN l.amount ELSE 0 END) as paid_amount")
-            )
-            ->groupBy('l.tenant_id', 't.code', 't.plan_id')
-            ->orderByDesc('paid_amount')
-            ->get();
+        $tripayTotal = 0;
+        $tripayPaidTotal = 0;
+        $tripayPaidAmount = 0;
+        $tripayByTenant = collect();
+        $tripayPlanRows = [];
 
         $tripayPlanAgg = [];
-        foreach ($tripayByTenant as $r) {
-            $planId = (int) ($r->plan_id ?? 0);
-            $planName = '-';
-            if ($planId > 0 && isset($planById[$planId])) {
-                $planName = (string) ($planById[$planId]->name ?? '-');
+        if (Schema::hasTable('tripay_usage_logs')) {
+            $tripayBase = DB::table('tripay_usage_logs as l')
+                ->leftJoin('tenants as t', 't.id', '=', 'l.tenant_id')
+                ->where('l.gateway_mode', 'owner')
+                ->where('l.status', 'PAID')
+                ->whereBetween('l.paid_at', [$start, $end]);
+
+            $tripayTotal = (int) (clone $tripayBase)->count();
+            $tripayPaidTotal = $tripayTotal;
+            $tripayPaidAmount = (int) (clone $tripayBase)->sum('l.amount');
+
+            $tripayByTenant = (clone $tripayBase)
+                ->select(
+                    'l.tenant_id',
+                    't.code as tenant_code',
+                    't.plan_id',
+                    DB::raw('COUNT(*) as total'),
+                    DB::raw("SUM(CASE WHEN l.status = 'PAID' THEN 1 ELSE 0 END) as paid_total"),
+                    DB::raw("SUM(CASE WHEN l.status = 'PAID' THEN l.amount ELSE 0 END) as paid_amount")
+                )
+                ->groupBy('l.tenant_id', 't.code', 't.plan_id')
+                ->orderByDesc('paid_amount')
+                ->get();
+
+            foreach ($tripayByTenant as $r) {
+                $planId = (int) ($r->plan_id ?? 0);
+                $planName = '-';
+                if ($planId > 0 && isset($planById[$planId])) {
+                    $planName = (string) ($planById[$planId]->name ?? '-');
+                }
+                if (! isset($tripayPlanAgg[$planId])) {
+                    $tripayPlanAgg[$planId] = [
+                        'plan_id' => $planId,
+                        'plan_name' => $planName,
+                        'tenant_count' => (int) ($tenantCountByPlan[$planId] ?? 0),
+                        'total' => 0,
+                        'paid_total' => 0,
+                        'paid_amount' => 0,
+                    ];
+                }
+                $tripayPlanAgg[$planId]['total'] += (int) ($r->total ?? 0);
+                $tripayPlanAgg[$planId]['paid_total'] += (int) ($r->paid_total ?? 0);
+                $tripayPlanAgg[$planId]['paid_amount'] += (int) ($r->paid_amount ?? 0);
             }
-            if (! isset($tripayPlanAgg[$planId])) {
-                $tripayPlanAgg[$planId] = [
-                    'plan_id' => $planId,
-                    'plan_name' => $planName,
-                    'tenant_count' => (int) ($tenantCountByPlan[$planId] ?? 0),
-                    'total' => 0,
-                    'paid_total' => 0,
-                    'paid_amount' => 0,
-                ];
-            }
-            $tripayPlanAgg[$planId]['total'] += (int) ($r->total ?? 0);
-            $tripayPlanAgg[$planId]['paid_total'] += (int) ($r->paid_total ?? 0);
-            $tripayPlanAgg[$planId]['paid_amount'] += (int) ($r->paid_amount ?? 0);
+            $tripayPlanRows = array_values($tripayPlanAgg);
+            usort($tripayPlanRows, function ($a, $b) {
+                return ($b['paid_amount'] <=> $a['paid_amount']) ?: ($b['paid_total'] <=> $a['paid_total']);
+            });
         }
-        $tripayPlanRows = array_values($tripayPlanAgg);
-        usort($tripayPlanRows, function ($a, $b) {
-            return ($b['paid_amount'] <=> $a['paid_amount']) ?: ($b['paid_total'] <=> $a['paid_total']);
-        });
 
         return view('platform.owner-dashboard', [
             'month' => $month,
