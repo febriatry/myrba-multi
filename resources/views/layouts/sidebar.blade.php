@@ -5,12 +5,24 @@
                 <div class="logo">
                     @php
                         $settingWeb = getSettingWeb();
+                        $isPlatformOwner =
+                            auth()->user() &&
+                            \Illuminate\Support\Facades\DB::table('model_has_roles')
+                                ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                                ->where('model_has_roles.model_type', \App\Models\User::class)
+                                ->where('model_has_roles.model_id', (int) auth()->id())
+                                ->where('model_has_roles.tenant_id', 0)
+                                ->where('roles.name', 'Platform Owner')
+                                ->where('roles.tenant_id', 0)
+                                ->exists();
                     @endphp
-                    @role('Super Admin')
+                    @if ($isPlatformOwner)
+                        <a href="{{ route('platform.dashboard') }}" class="d-flex align-items-center" style="min-height: 90px;">
+                    @elseif (auth()->user() && auth()->user()->hasRole('Super Admin'))
                         <a href="{{ route('tenant.dashboard') }}" class="d-flex align-items-center" style="min-height: 90px;">
                     @else
                         <a href="/dashboard" class="d-flex align-items-center" style="min-height: 90px;">
-                    @endrole
+                    @endif
                         @if ($settingWeb && !empty($settingWeb->logo))
                             <img src="{{ asset('storage/uploads/logos/' . $settingWeb->logo) }}" alt="Logo Perusahaan"
                                 style="max-height: 80px; width: auto; object-fit: contain;">
@@ -57,7 +69,14 @@
         </div>
         <div class="sidebar-menu">
             <ul class="menu">
-                @role('Super Admin')
+                @if ($isPlatformOwner)
+                    <li class="sidebar-item{{ request()->is('platform') || request()->is('platform/*') ? ' active' : '' }}">
+                        <a class="sidebar-link" href="{{ route('platform.dashboard') }}">
+                            <i class="bi bi-speedometer"></i>
+                            <span> {{ __('Dashboard') }}</span>
+                        </a>
+                    </li>
+                @elseif (auth()->user() && auth()->user()->hasRole('Super Admin'))
                     <li class="sidebar-item{{ request()->is('/') || request()->is('dashboard') || request()->is('tenant/dashboard') ? ' active' : '' }}">
                         <a class="sidebar-link" href="{{ route('tenant.dashboard') }}">
                             <i class="bi bi-speedometer"></i>
@@ -71,15 +90,8 @@
                         <span> {{ __('Dashboard') }}</span>
                     </a>
                 </li>
-                @endrole
-                @if (auth()->user() && \Illuminate\Support\Facades\DB::table('model_has_roles')
-                        ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
-                        ->where('model_has_roles.model_type', \App\Models\User::class)
-                        ->where('model_has_roles.model_id', (int) auth()->id())
-                        ->where('model_has_roles.tenant_id', 0)
-                        ->where('roles.name', 'Platform Owner')
-                        ->where('roles.tenant_id', 0)
-                        ->exists())
+                @endif
+                @if ($isPlatformOwner)
                     @php
                         $platformMenuActive = request()->is('platform') || request()->is('platform/*') || request()->is('wa-config') || request()->is('wa-config/*');
                     @endphp
@@ -110,7 +122,7 @@
                         </ul>
                     </li>
                 @endif
-                @role('Super Admin')
+                @if (! $isPlatformOwner && auth()->user() && auth()->user()->hasRole('Super Admin'))
                     @php
                         $tenantMenuActive =
                             request()->is('tenant/dashboard') ||
@@ -142,65 +154,65 @@
                             @endif
                         </ul>
                     </li>
-                @endrole
-                @foreach (config('generator.sidebars') as $sidebar)
-                    @if (isset($sidebar['permissions']))
-                        @canany($sidebar['permissions'])
-                            @foreach ($sidebar['menus'] as $menu)
-                                @php
-                                    $permissions = empty($menu['permission'])
-                                        ? $menu['permissions']
-                                        : [$menu['permission']];
-                                @endphp
+                    @foreach (config('generator.sidebars') as $sidebar)
+                        @if (isset($sidebar['permissions']))
+                            @canany($sidebar['permissions'])
+                                @foreach ($sidebar['menus'] as $menu)
+                                    @php
+                                        $permissions = empty($menu['permission'])
+                                            ? $menu['permissions']
+                                            : [$menu['permission']];
+                                    @endphp
 
-                                @canany($permissions)
-                                    @if (empty($menu['submenus']))
-                                        <li class="sidebar-item{{ is_active_menu($menu['route']) }}">
-                                            <a href="{{ route(str($menu['route'])->remove('/') . '.index') }}"
-                                                class="sidebar-link">
-                                                {!! $menu['icon'] !!}
-                                                <span>{{ __($menu['title']) }}</span>
-                                            </a>
-                                        </li>
-                                    @else
-                                        <li class="sidebar-item has-sub{{ is_active_menu($menu['permissions']) }}">
-                                            <a href="#" class="sidebar-link">
-                                                {!! $menu['icon'] !!}
-                                                <span>{{ __($menu['title']) }}</span>
-                                            </a>
-                                            <ul class="submenu">
-                                                @canany($menu['permissions'])
-                                                    @foreach ($menu['submenus'] as $submenu)
-                                                        @php
-                                                            $submenuPermissions = $submenu['permission'];
-                                                        @endphp
-                                                        @if (is_array($submenuPermissions))
-                                                            @canany($submenuPermissions)
-                                                            <li class="submenu-item{{ is_active_menu($submenu['route']) }}">
-                                                                <a href="{{ route(str($submenu['route'])->remove('/') . '.index') }}">
-                                                                    {{ __($submenu['title']) }}
-                                                                </a>
-                                                            </li>
-                                                            @endcanany
-                                                        @else
-                                                            @can($submenuPermissions)
-                                                                <li class="submenu-item{{ is_active_menu($submenu['route']) }}">
-                                                                    <a href="{{ route(str($submenu['route'])->remove('/') . '.index') }}">
-                                                                        {{ __($submenu['title']) }}
-                                                                    </a>
-                                                                </li>
-                                                            @endcan
-                                                        @endif
-                                                    @endforeach
-                                                @endcanany
-                                            </ul>
-                                        </li>
-                                    @endif
-                                @endcanany
-                            @endforeach
-                        @endcanany
-                    @endif
-                @endforeach
+                                    @canany($permissions)
+                                        @if (empty($menu['submenus']))
+                                            <li class="sidebar-item{{ is_active_menu($menu['route']) }}">
+                                                <a href="{{ route(str($menu['route'])->remove('/') . '.index') }}"
+                                                    class="sidebar-link">
+                                                    {!! $menu['icon'] !!}
+                                                    <span>{{ __($menu['title']) }}</span>
+                                                </a>
+                                            </li>
+                                        @else
+                                            <li class="sidebar-item has-sub{{ is_active_menu($menu['permissions']) }}">
+                                                <a href="#" class="sidebar-link">
+                                                    {!! $menu['icon'] !!}
+                                                    <span>{{ __($menu['title']) }}</span>
+                                                </a>
+                                                <ul class="submenu">
+                                                    @canany($menu['permissions'])
+                                                        @foreach ($menu['submenus'] as $submenu)
+                                                            @php
+                                                                $submenuPermissions = $submenu['permission'];
+                                                            @endphp
+                                                            @if (is_array($submenuPermissions))
+                                                                @canany($submenuPermissions)
+                                                                    <li class="submenu-item{{ is_active_menu($submenu['route']) }}">
+                                                                        <a href="{{ route(str($submenu['route'])->remove('/') . '.index') }}">
+                                                                            {{ __($submenu['title']) }}
+                                                                        </a>
+                                                                    </li>
+                                                                @endcanany
+                                                            @else
+                                                                @can($submenuPermissions)
+                                                                    <li class="submenu-item{{ is_active_menu($submenu['route']) }}">
+                                                                        <a href="{{ route(str($submenu['route'])->remove('/') . '.index') }}">
+                                                                            {{ __($submenu['title']) }}
+                                                                        </a>
+                                                                    </li>
+                                                                @endcan
+                                                            @endif
+                                                        @endforeach
+                                                    @endcanany
+                                                </ul>
+                                            </li>
+                                        @endif
+                                    @endcanany
+                                @endforeach
+                            @endcanany
+                        @endif
+                    @endforeach
+                @endif
             </ul>
         </div>
     </div>
