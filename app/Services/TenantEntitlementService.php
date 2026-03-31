@@ -9,7 +9,7 @@ class TenantEntitlementService
     public static function currentTenant(): ?Tenant
     {
         $user = auth()->user();
-        if (!$user || !isset($user->tenant_id)) {
+        if (! $user || ! isset($user->tenant_id)) {
             return null;
         }
 
@@ -19,7 +19,7 @@ class TenantEntitlementService
     public static function quota(string $key): ?int
     {
         $tenant = self::currentTenant();
-        if (!$tenant) {
+        if (! $tenant) {
             return null;
         }
 
@@ -27,7 +27,7 @@ class TenantEntitlementService
         $tenantQuota = is_array($tenant->quota_json) ? $tenant->quota_json : [];
         $merged = array_merge($planQuota, $tenantQuota);
 
-        if (!array_key_exists($key, $merged)) {
+        if (! array_key_exists($key, $merged)) {
             return null;
         }
 
@@ -36,18 +36,19 @@ class TenantEntitlementService
             return null;
         }
 
-        if (!is_numeric($val)) {
+        if (! is_numeric($val)) {
             return null;
         }
 
         $val = (int) $val;
+
         return $val > 0 ? $val : null;
     }
 
     public static function featureEnabled(string $key, bool $default = false): bool
     {
         $tenant = self::currentTenant();
-        if (!$tenant) {
+        if (! $tenant) {
             return $default;
         }
 
@@ -60,9 +61,10 @@ class TenantEntitlementService
             return $default;
         }
         $tenant = Tenant::query()->with('plan')->find($tenantId);
-        if (!$tenant) {
+        if (! $tenant) {
             return $default;
         }
+
         return self::featureEnabledForTenant($tenant, $key, $default);
     }
 
@@ -72,7 +74,7 @@ class TenantEntitlementService
         $tenantFeatures = is_array($tenant->features_json) ? $tenant->features_json : [];
         $merged = array_merge($planFeatures, $tenantFeatures);
 
-        if (!array_key_exists($key, $merged)) {
+        if (! array_key_exists($key, $merged)) {
             return $default;
         }
 
@@ -90,13 +92,14 @@ class TenantEntitlementService
         if (in_array($text, ['0', 'false', 'no', 'off', 'disabled'], true)) {
             return false;
         }
+
         return $default;
     }
 
-    public static function ensureFeature(string $key, string $label)
+    public static function ensureFeature(string $key, string $label, bool $defaultEnabled = false)
     {
-        if (!self::featureEnabled($key, false)) {
-            abort(403, 'Fitur tidak tersedia: ' . $label);
+        if (! self::featureEnabled($key, $defaultEnabled)) {
+            abort(403, 'Fitur tidak tersedia: '.$label);
         }
     }
 
@@ -108,7 +111,7 @@ class TenantEntitlementService
         }
 
         if (($current + $delta) > $limit) {
-            abort(403, 'Kuota ' . $label . ' telah habis. Maksimal: ' . $limit);
+            abort(403, 'Kuota '.$label.' telah habis. Maksimal: '.$limit);
         }
     }
 }

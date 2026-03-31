@@ -251,7 +251,7 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::get('laporans/export-kas', 'exportKas')->name('laporans.exportKas');
     });
     Route::resource('laporans', App\Http\Controllers\LaporanController::class);
-    Route::controller(AuditKeuanganController::class)->group(function () {
+    Route::controller(AuditKeuanganController::class)->middleware('tenant.feature:audit')->group(function () {
         Route::get('/audit-keuangan', 'index')->name('audit-keuangan.index');
         Route::get('/audit-keuangan/summary-area', 'summaryArea')->name('audit-keuangan.summary-area');
         Route::get('/audit-keuangan/pelanggan-tunggak', 'pelangganTunggak')->name('audit-keuangan.pelanggan-tunggak');
@@ -341,7 +341,7 @@ Route::post('withdraws/{withdraw}/approve', [App\Http\Controllers\WithdrawContro
 Route::resource('topups', App\Http\Controllers\TopupController::class)->middleware('auth');
 Route::post('topups/approve', [App\Http\Controllers\TopupController::class, 'approve'])->name('topups.approve')->middleware('auth');
 
-Route::resource('olts', App\Http\Controllers\OltController::class)->middleware('auth');
+Route::resource('olts', App\Http\Controllers\OltController::class)->middleware(['auth', 'tenant.feature:olt']);
 
 Route::get('/investor', [App\Http\Controllers\InvestorController::class, 'index'])
     ->name('investor.index')
@@ -372,10 +372,10 @@ Route::get('/mikrotik-automation/logs', [App\Http\Controllers\MikrotikAutomation
 
 Route::get('/audit-pelanggan', [App\Http\Controllers\AuditPelangganController::class, 'index'])
     ->name('audit-pelanggan.index')
-    ->middleware(['auth', 'permission:audit pelanggan view']);
+    ->middleware(['auth', 'permission:audit pelanggan view', 'tenant.feature:audit']);
 Route::get('/audit-pelanggan/export/pdf', [App\Http\Controllers\AuditPelangganController::class, 'exportPdf'])
     ->name('audit-pelanggan.export.pdf')
-    ->middleware(['auth', 'permission:audit pelanggan export']);
+    ->middleware(['auth', 'permission:audit pelanggan export', 'tenant.feature:audit']);
 
 Route::get('investor-share-rules/{id}/customers', [App\Http\Controllers\InvestorShareRuleController::class, 'customers'])
     ->name('investor-share-rules.customers')

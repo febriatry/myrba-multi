@@ -15,12 +15,14 @@ class EnsureTenantFeature
             'payment_gateway' => 'Payment Gateway',
             'inventory' => 'Inventory',
             'hr' => 'HR',
+            'olt' => 'OLT',
+            'audit' => 'Audit',
         ];
         $label = $labels[$featureKey] ?? $featureKey;
 
-        TenantEntitlementService::ensureFeature($featureKey, $label);
+        $defaultEnabled = in_array($featureKey, ['olt', 'audit'], true);
+        TenantEntitlementService::ensureFeature($featureKey, $label, $defaultEnabled);
 
         return $next($request);
     }
 }
-

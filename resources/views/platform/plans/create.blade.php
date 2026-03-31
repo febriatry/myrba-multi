@@ -61,6 +61,20 @@
                         <option value="0" @selected(old('feature_hr', '0') === '0')>Off</option>
                     </select>
                 </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">OLT</label>
+                    <select name="feature_olt" class="form-select">
+                        <option value="1" @selected(old('feature_olt', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_olt', '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Audit</label>
+                    <select name="feature_audit" class="form-select">
+                        <option value="1" @selected(old('feature_audit', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_audit', '1') === '0')>Off</option>
+                    </select>
+                </div>
 
                 <div class="col-12 mt-2">
                     <div class="fw-bold mb-2">Kuota</div>
@@ -76,6 +90,10 @@
                 <div class="col-12 col-md-3">
                     <label class="form-label">Max WA / Bulan</label>
                     <input type="number" name="max_wa_messages_monthly" class="form-control" value="{{ old('max_wa_messages_monthly') }}" min="1">
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Max Router</label>
+                    <input type="number" name="max_routers" class="form-control" value="{{ old('max_routers') }}" min="1">
                 </div>
                 <div class="col-12 col-md-3">
                     <label class="form-label">WA Gratis / Bulan (Owner)</label>

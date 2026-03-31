@@ -34,9 +34,12 @@ class TenantPlanController extends Controller
             'feature_payment_gateway' => 'nullable|in:1,0',
             'feature_inventory' => 'nullable|in:1,0',
             'feature_hr' => 'nullable|in:1,0',
+            'feature_olt' => 'nullable|in:1,0',
+            'feature_audit' => 'nullable|in:1,0',
             'max_users' => 'nullable|integer|min:1',
             'max_pelanggans' => 'nullable|integer|min:1',
             'max_wa_messages_monthly' => 'nullable|integer|min:1',
+            'max_routers' => 'nullable|integer|min:1',
             'wa_free_messages_monthly' => 'nullable|integer|min:0',
             'wa_price_per_message' => 'nullable|numeric|min:0',
         ]);
@@ -46,10 +49,12 @@ class TenantPlanController extends Controller
             'payment_gateway' => isset($validated['feature_payment_gateway']) ? ((int) $validated['feature_payment_gateway'] === 1) : false,
             'inventory' => isset($validated['feature_inventory']) ? ((int) $validated['feature_inventory'] === 1) : false,
             'hr' => isset($validated['feature_hr']) ? ((int) $validated['feature_hr'] === 1) : false,
+            'olt' => isset($validated['feature_olt']) ? ((int) $validated['feature_olt'] === 1) : true,
+            'audit' => isset($validated['feature_audit']) ? ((int) $validated['feature_audit'] === 1) : true,
         ];
 
         $quota = [];
-        foreach (['max_users', 'max_pelanggans', 'max_wa_messages_monthly'] as $k) {
+        foreach (['max_users', 'max_pelanggans', 'max_wa_messages_monthly', 'max_routers'] as $k) {
             if (isset($validated[$k]) && is_numeric($validated[$k])) {
                 $quota[$k] = (int) $validated[$k];
             }
@@ -87,9 +92,12 @@ class TenantPlanController extends Controller
             'feature_payment_gateway' => 'nullable|in:1,0',
             'feature_inventory' => 'nullable|in:1,0',
             'feature_hr' => 'nullable|in:1,0',
+            'feature_olt' => 'nullable|in:1,0',
+            'feature_audit' => 'nullable|in:1,0',
             'max_users' => 'nullable|integer|min:1',
             'max_pelanggans' => 'nullable|integer|min:1',
             'max_wa_messages_monthly' => 'nullable|integer|min:1',
+            'max_routers' => 'nullable|integer|min:1',
             'wa_free_messages_monthly' => 'nullable|integer|min:0',
             'wa_price_per_message' => 'nullable|numeric|min:0',
         ]);
@@ -99,10 +107,12 @@ class TenantPlanController extends Controller
             'payment_gateway' => isset($validated['feature_payment_gateway']) ? ((int) $validated['feature_payment_gateway'] === 1) : false,
             'inventory' => isset($validated['feature_inventory']) ? ((int) $validated['feature_inventory'] === 1) : false,
             'hr' => isset($validated['feature_hr']) ? ((int) $validated['feature_hr'] === 1) : false,
+            'olt' => isset($validated['feature_olt']) ? ((int) $validated['feature_olt'] === 1) : true,
+            'audit' => isset($validated['feature_audit']) ? ((int) $validated['feature_audit'] === 1) : true,
         ];
 
         $quota = [];
-        foreach (['max_users', 'max_pelanggans', 'max_wa_messages_monthly'] as $k) {
+        foreach (['max_users', 'max_pelanggans', 'max_wa_messages_monthly', 'max_routers'] as $k) {
             if (isset($validated[$k]) && is_numeric($validated[$k])) {
                 $quota[$k] = (int) $validated[$k];
             }

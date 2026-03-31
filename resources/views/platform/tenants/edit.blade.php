@@ -43,6 +43,8 @@
                     $owPayment = array_key_exists('payment_gateway', $features) ? ($features['payment_gateway'] ? '1' : '0') : '';
                     $owInventory = array_key_exists('inventory', $features) ? ($features['inventory'] ? '1' : '0') : '';
                     $owHr = array_key_exists('hr', $features) ? ($features['hr'] ? '1' : '0') : '';
+                    $owOlt = array_key_exists('olt', $features) ? ($features['olt'] ? '1' : '0') : '';
+                    $owAudit = array_key_exists('audit', $features) ? ($features['audit'] ? '1' : '0') : '';
                 @endphp
                 <div class="col-12">
                     <hr>
@@ -82,6 +84,22 @@
                         <option value="0" @selected((string) old('override_feature_hr', $owHr) === '0')>Off</option>
                     </select>
                 </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">OLT</label>
+                    <select name="override_feature_olt" class="form-select">
+                        <option value="" @selected((string) old('override_feature_olt', $owOlt) === '')>Inherit</option>
+                        <option value="1" @selected((string) old('override_feature_olt', $owOlt) === '1')>On</option>
+                        <option value="0" @selected((string) old('override_feature_olt', $owOlt) === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Audit</label>
+                    <select name="override_feature_audit" class="form-select">
+                        <option value="" @selected((string) old('override_feature_audit', $owAudit) === '')>Inherit</option>
+                        <option value="1" @selected((string) old('override_feature_audit', $owAudit) === '1')>On</option>
+                        <option value="0" @selected((string) old('override_feature_audit', $owAudit) === '0')>Off</option>
+                    </select>
+                </div>
 
                 <div class="col-12 mt-2">
                     <div class="fw-bold mb-2">Override Kuota (opsional)</div>
@@ -97,6 +115,10 @@
                 <div class="col-12 col-md-3">
                     <label class="form-label">Max WA / Bulan</label>
                     <input type="number" name="override_max_wa_messages_monthly" class="form-control" value="{{ old('override_max_wa_messages_monthly', $quota['max_wa_messages_monthly'] ?? '') }}" min="1">
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Max Router</label>
+                    <input type="number" name="override_max_routers" class="form-control" value="{{ old('override_max_routers', $quota['max_routers'] ?? '') }}" min="1">
                 </div>
                 <div class="col-12 col-md-3">
                     <label class="form-label">Harga WA / Pesan</label>

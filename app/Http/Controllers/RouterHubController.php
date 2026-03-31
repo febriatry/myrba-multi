@@ -54,11 +54,13 @@ class RouterHubController extends Controller
                 'key' => 'audit',
                 'label' => 'Audit Pelanggan',
                 'permission' => 'audit pelanggan view',
+                'feature' => 'audit',
                 'src' => route('audit-pelanggan.index', ['embed' => 1]),
             ],
         ];
 
         $tab = (string) $request->query('tab', 'status');
+
         return view('hub.tabs', [
             'title' => 'Router',
             'subtitle' => 'Monitoring dan konfigurasi router.',
@@ -68,4 +70,3 @@ class RouterHubController extends Controller
         ]);
     }
 }
-

@@ -36,6 +36,7 @@ class NetworkHubController extends Controller
                 'key' => 'olt',
                 'label' => 'OLT',
                 'permission' => 'olt view',
+                'feature' => 'olt',
                 'src' => route('olts.index', ['embed' => 1]),
             ],
             [
@@ -47,6 +48,7 @@ class NetworkHubController extends Controller
         ];
 
         $tab = (string) $request->query('tab', 'router');
+
         return view('hub.tabs', [
             'title' => 'Network Ops',
             'subtitle' => 'Router, PPPOE, Hotspot, OLT, dan WA Broadcast.',
@@ -56,4 +58,3 @@ class NetworkHubController extends Controller
         ]);
     }
 }
-

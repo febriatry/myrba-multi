@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreSettingmikrotikRequest;
+use App\Http\Requests\UpdateSettingmikrotikRequest;
 use App\Models\Settingmikrotik;
-use App\Http\Requests\{StoreSettingmikrotikRequest, UpdateSettingmikrotikRequest};
-use Yajra\DataTables\Facades\DataTables;
+use App\Services\TenantEntitlementService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
-use Alert;
+use Yajra\DataTables\Facades\DataTables;
 
 class SettingmikrotikController extends Controller
 {
@@ -31,8 +31,9 @@ class SettingmikrotikController extends Controller
                 ->toJson();
         }
         $countRouter = Settingmikrotik::count();
+
         return view('settingmikrotiks.index', [
-            'countRouter' => $countRouter
+            'countRouter' => $countRouter,
         ]);
     }
 
@@ -55,10 +56,18 @@ class SettingmikrotikController extends Controller
     public function store(StoreSettingmikrotikRequest $request)
     {
         $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+        $max = TenantEntitlementService::quota('max_routers');
+        if ($max !== null) {
+            $current = (int) Settingmikrotik::query()->count();
+            if ($current >= $max) {
+                return redirect()->back()->withInput()->with('error', 'Kuota router telah habis. Maksimal: '.$max);
+            }
+        }
         $attr = $request->validated();
         $attr['tenant_id'] = $tenantId;
         $attr['password'] = $request->password;
         Settingmikrotik::create($attr);
+
         return redirect()
             ->route('settingmikrotiks.index')
             ->with('success', __('The settingmikrotik was created successfully.'));
@@ -67,7 +76,6 @@ class SettingmikrotikController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Settingmikrotik  $settingmikrotik
      * @return \Illuminate\Http\Response
      */
     public function show(Settingmikrotik $settingmikrotik)
@@ -78,7 +86,6 @@ class SettingmikrotikController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Settingmikrotik  $settingmikrotik
      * @return \Illuminate\Http\Response
      */
     public function edit(Settingmikrotik $settingmikrotik)
@@ -90,7 +97,6 @@ class SettingmikrotikController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Settingmikrotik  $settingmikrotik
      * @return \Illuminate\Http\Response
      */
     public function update(UpdateSettingmikrotikRequest $request, Settingmikrotik $settingmikrotik)
@@ -106,7 +112,7 @@ class SettingmikrotikController extends Controller
                     'host' => $request->host,
                     'port' => $request->port,
                     'username' => $request->username,
-                    'updated_at' =>  date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]);
         } else {
             DB::table('settingmikrotiks')
@@ -118,7 +124,7 @@ class SettingmikrotikController extends Controller
                     'port' => $request->port,
                     'username' => $request->username,
                     'password' => $request->password,
-                    'updated_at' =>  date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]);
         }
 
@@ -130,7 +136,6 @@ class SettingmikrotikController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Settingmikrotik  $settingmikrotik
      * @return \Illuminate\Http\Response
      */
     public function destroy(Settingmikrotik $settingmikrotik)

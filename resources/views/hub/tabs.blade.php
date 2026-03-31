@@ -9,7 +9,15 @@
         $visibleTabs = [];
         foreach (($tabs ?? []) as $t) {
             $perm = $t['permission'] ?? null;
+            $feature = $t['feature'] ?? null;
             $ok = true;
+            if (!empty($feature) && class_exists(\App\Services\TenantEntitlementService::class)) {
+                try {
+                    $ok = \App\Services\TenantEntitlementService::featureEnabled((string) $feature, true);
+                } catch (\Throwable $e) {
+                    $ok = true;
+                }
+            }
             if (!empty($perm) && $user) {
                 if (is_array($perm)) {
                     $ok = false;
