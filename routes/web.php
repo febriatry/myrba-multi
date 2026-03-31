@@ -4,6 +4,7 @@ use App\Http\Controllers\AuditKeuanganController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\PelangganController;
+use App\Http\Controllers\PlatformOwnerDashboardController;
 use App\Http\Controllers\PlatformSettingsController;
 use App\Http\Controllers\PlatformWaUsageController;
 use App\Http\Controllers\TagihanController;
@@ -63,9 +64,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::post('/tenant/payment-settings', [TenantPaymentController::class, 'updateSettings'])->name('tenant.payment.settings.update')->middleware('tenant.feature:payment_gateway');
 
     Route::prefix('platform')->name('platform.')->middleware(['platform.team', 'role:Platform Owner'])->group(function () {
-        Route::get('/', function () {
-            return redirect()->route('platform.plans.index');
-        })->name('dashboard');
+        Route::get('/', [PlatformOwnerDashboardController::class, 'index'])->name('dashboard');
         Route::resource('plans', TenantPlanController::class)->except(['show']);
         Route::get('wa-usage', [PlatformWaUsageController::class, 'index'])->name('wa-usage.index');
         Route::get('settings', [PlatformSettingsController::class, 'index'])->name('settings.index');

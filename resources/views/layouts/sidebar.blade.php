@@ -81,7 +81,7 @@
                         ->where('roles.tenant_id', 0)
                         ->exists())
                     <li class="sidebar-item{{ request()->is('platform') || request()->is('platform/*') ? ' active' : '' }}">
-                        <a class="sidebar-link" href="{{ route('platform.plans.index') }}">
+                        <a class="sidebar-link" href="{{ route('platform.dashboard') }}">
                             <i class="bi bi-diagram-3"></i>
                             <span>Platform</span>
                         </a>
