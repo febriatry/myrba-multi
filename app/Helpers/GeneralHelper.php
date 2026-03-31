@@ -1951,12 +1951,16 @@ function getAllowedAreaCoverageIdsForUser()
     if (! $user) {
         return [];
     }
+    $tenantId = (int) ($user->tenant_id ?? 0);
+    if ($tenantId < 1) {
+        $tenantId = 1;
+    }
     if (method_exists($user, 'hasRole') && $user->hasRole('Super Admin')) {
-        return AreaCoverage::pluck('id')->toArray();
+        return AreaCoverage::where('tenant_id', $tenantId)->pluck('id')->toArray();
     }
     $names = $user->getAllPermissions()->pluck('name')->toArray();
     if (in_array('area coverage access:all', $names, true)) {
-        return AreaCoverage::pluck('id')->toArray();
+        return AreaCoverage::where('tenant_id', $tenantId)->pluck('id')->toArray();
     }
     $ids = [];
     foreach ($names as $name) {
@@ -1968,7 +1972,12 @@ function getAllowedAreaCoverageIdsForUser()
         }
     }
 
-    return array_values(array_unique($ids));
+    if (empty($ids)) {
+        return [];
+    }
+    $allowed = AreaCoverage::where('tenant_id', $tenantId)->whereIn('id', $ids)->pluck('id')->toArray();
+
+    return array_values(array_unique($allowed));
 }
 
 function getInternetIncomeCategoryIdForPelanggan($pelangganId)

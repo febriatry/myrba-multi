@@ -78,7 +78,7 @@
                     </li>
                 @elseif (auth()->user() && auth()->user()->hasRole('Super Admin'))
                     <li class="sidebar-item{{ request()->is('/') || request()->is('dashboard') || request()->is('tenant/dashboard') ? ' active' : '' }}">
-                        <a class="sidebar-link" href="{{ route('tenant.dashboard') }}">
+                        <a class="sidebar-link" href="{{ route('dashboard') }}">
                             <i class="bi bi-speedometer"></i>
                             <span> {{ __('Dashboard') }}</span>
                         </a>
@@ -125,6 +125,7 @@
                 @if (! $isPlatformOwner && auth()->user() && auth()->user()->hasRole('Super Admin'))
                     @php
                         $tenantMenuActive =
+                            request()->is('dashboard') ||
                             request()->is('tenant/dashboard') ||
                             request()->is('tenant/payment-settings') ||
                             request()->is('tenant/wa-settings') ||
@@ -133,11 +134,11 @@
                     <li class="sidebar-item has-sub{{ $tenantMenuActive ? ' active' : '' }}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-building"></i>
-                            <span>Tenant</span>
+                            <span>Corporate</span>
                         </a>
                         <ul class="submenu">
                             <li class="submenu-item{{ request()->is('tenant/dashboard') ? ' active' : '' }}">
-                                <a href="{{ route('tenant.dashboard') }}">Dashboard</a>
+                                <a href="{{ route('dashboard') }}">Dashboard</a>
                             </li>
                             @if (\App\Services\TenantEntitlementService::featureEnabled('payment_gateway', false))
                                 <li class="submenu-item{{ request()->is('tenant/payment-settings') ? ' active' : '' }}">

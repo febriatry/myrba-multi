@@ -28,11 +28,11 @@ class DashboardController extends Controller
         if ($isPlatformOwner) {
             return redirect()->route('platform.dashboard');
         }
-        if (auth()->user() && auth()->user()->hasRole('Super Admin')) {
-            return redirect()->route('tenant.dashboard');
-        }
 
         $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+        if ($tenantId < 1) {
+            $tenantId = 1;
+        }
         $currentMonthStart = Carbon::now()->startOfMonth();
         $currentMonthEnd = Carbon::now()->endOfMonth();
         $todayStart = Carbon::today()->startOfDay();
@@ -40,6 +40,7 @@ class DashboardController extends Controller
 
         $allowedAreas = getAllowedAreaCoverageIdsForUser();
         $pelanggan = Pelanggan::select('id', 'status_berlangganan', 'tanggal_daftar', 'latitude', 'longitude', 'nama')
+            ->where('tenant_id', $tenantId)
             ->when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
                 $q->whereIn('coverage_area', $allowedAreas);
             })
@@ -49,28 +50,33 @@ class DashboardController extends Controller
         $newPelanggan = Pelanggan::when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
             $q->whereIn('coverage_area', $allowedAreas);
         })
+            ->where('tenant_id', $tenantId)
             ->whereBetween('tanggal_daftar', [$currentMonthStart->toDateString(), $currentMonthEnd->toDateString()])
             ->count();
         $countPelanggan = $pelanggan->count();
         $countPelangganAktif = $pelanggan->where('status_berlangganan', 'Aktif')->count();
-        $countPelangganNon = $pelanggan->where('status_berlangganan', 'Non Aktif')->count();
+        $countPelangganPutus = $pelanggan->where('status_berlangganan', 'Putus')->count();
+        $countPelangganNon = $countPelanggan - $countPelangganAktif;
 
         // Gunakan caching untuk data statis
-        $countAreaCoverage = Cache::remember('count_area_coverage_tenant_'.$tenantId, 600, function () use ($allowedAreas) {
-            return AreaCoverage::when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
+        $countAreaCoverage = Cache::remember('count_area_coverage_tenant_'.$tenantId, 600, function () use ($allowedAreas, $tenantId) {
+            return AreaCoverage::where('tenant_id', $tenantId)->when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
                 $q->whereIn('id', $allowedAreas);
             })->count();
         });
 
-        $countRouter = Cache::remember('count_router_tenant_'.$tenantId, 600, function () {
-            return Settingmikrotik::count();
+        $countRouter = Cache::remember('count_router_tenant_'.$tenantId, 600, function () use ($tenantId) {
+            return Settingmikrotik::query()->where('tenant_id', $tenantId)->count();
         });
 
         // Ambil data pemasukan hari ini
-        $pemasukans = Pemasukan::whereBetween('tanggal', [$todayStart, $todayEnd])->get();
+        $pemasukans = Pemasukan::query()->where('tenant_id', $tenantId)->whereBetween('tanggal', [$todayStart, $todayEnd])->get();
 
         // Mikrotik Queries across all routers with breakdown per router
-        $routers = Settingmikrotik::select('id', 'identitas_router', 'host', 'username', 'password', 'port')->get();
+        $routers = Settingmikrotik::query()
+            ->where('tenant_id', $tenantId)
+            ->select('id', 'identitas_router', 'host', 'username', 'password', 'port')
+            ->get();
         $hotspotactives = 0;
         $activePpps = 0;
         $nonactivePpps = 0;
@@ -114,6 +120,7 @@ class DashboardController extends Controller
             'countPelanggan',
             'countRouter',
             'countPelangganAktif',
+            'countPelangganPutus',
             'countPelangganNon',
             'hotspotactives',
             'activePpps',
