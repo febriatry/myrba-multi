@@ -4,6 +4,7 @@ use App\Http\Controllers\AuditKeuanganController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\PelangganController;
+use App\Http\Controllers\PlatformSettingsController;
 use App\Http\Controllers\PlatformWaUsageController;
 use App\Http\Controllers\TagihanController;
 use App\Http\Controllers\TenantAdminDashboardController;
@@ -67,6 +68,9 @@ Route::middleware(['auth', 'web'])->group(function () {
         })->name('dashboard');
         Route::resource('plans', TenantPlanController::class)->except(['show']);
         Route::get('wa-usage', [PlatformWaUsageController::class, 'index'])->name('wa-usage.index');
+        Route::get('settings', [PlatformSettingsController::class, 'index'])->name('settings.index');
+        Route::post('settings/tripay', [PlatformSettingsController::class, 'updateTripay'])->name('settings.update.tripay');
+        Route::post('settings/wa', [PlatformSettingsController::class, 'updateWa'])->name('settings.update.wa');
     });
 
     Route::get('/profile', App\Http\Controllers\ProfileController::class)->name('profile');

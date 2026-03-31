@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Pelanggan;
 use App\Models\AreaCoverage;
-use \RouterOS\Query;
+use App\Models\Pelanggan;
 use App\Models\Pemasukan;
 use App\Models\Settingmikrotik;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use \RouterOS\Client;
+use Illuminate\Support\Facades\Schema;
+use RouterOS\Client;
+use RouterOS\Query;
 
 class DashboardController extends Controller
 {
@@ -27,6 +28,9 @@ class DashboardController extends Controller
         if ($isPlatformOwner) {
             return redirect()->route('platform.dashboard');
         }
+        if (auth()->user() && auth()->user()->hasRole('Super Admin')) {
+            return redirect()->route('tenant.dashboard');
+        }
 
         $tenantId = (int) (auth()->user()->tenant_id ?? 0);
         $currentMonthStart = Carbon::now()->startOfMonth();
@@ -36,29 +40,29 @@ class DashboardController extends Controller
 
         $allowedAreas = getAllowedAreaCoverageIdsForUser();
         $pelanggan = Pelanggan::select('id', 'status_berlangganan', 'tanggal_daftar', 'latitude', 'longitude', 'nama')
-            ->when(!empty($allowedAreas), function ($q) use ($allowedAreas) {
+            ->when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
                 $q->whereIn('coverage_area', $allowedAreas);
             })
             ->get();
 
         // Hitung pelanggan baru, aktif, dan non-aktif
-        $newPelanggan = Pelanggan::when(!empty($allowedAreas), function ($q) use ($allowedAreas) {
-                $q->whereIn('coverage_area', $allowedAreas);
-            })
+        $newPelanggan = Pelanggan::when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
+            $q->whereIn('coverage_area', $allowedAreas);
+        })
             ->whereBetween('tanggal_daftar', [$currentMonthStart->toDateString(), $currentMonthEnd->toDateString()])
             ->count();
         $countPelanggan = $pelanggan->count();
         $countPelangganAktif = $pelanggan->where('status_berlangganan', 'Aktif')->count();
-        $countPelangganNon = $countPelanggan - $countPelangganAktif;
+        $countPelangganNon = $pelanggan->where('status_berlangganan', 'Non Aktif')->count();
 
         // Gunakan caching untuk data statis
-        $countAreaCoverage = Cache::remember("count_area_coverage_tenant_" . $tenantId, 600, function () use ($allowedAreas) {
-            return AreaCoverage::when(!empty($allowedAreas), function ($q) use ($allowedAreas) {
+        $countAreaCoverage = Cache::remember('count_area_coverage_tenant_'.$tenantId, 600, function () use ($allowedAreas) {
+            return AreaCoverage::when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
                 $q->whereIn('id', $allowedAreas);
             })->count();
         });
 
-        $countRouter = Cache::remember("count_router_tenant_" . $tenantId, 600, function () {
+        $countRouter = Cache::remember('count_router_tenant_'.$tenantId, 600, function () {
             return Settingmikrotik::count();
         });
 
@@ -83,7 +87,7 @@ class DashboardController extends Controller
                     'port' => (int) $r->port,
                 ]);
                 $identity = $client->query(new Query('/system/identity/print'))->read();
-                $routerName = $identity[0]['name'] ?? $r->identitas_router ?? ('Router ' . $r->id);
+                $routerName = $identity[0]['name'] ?? $r->identitas_router ?? ('Router '.$r->id);
                 $hotspotCount = count($client->query(new Query('/ip/hotspot/active/print'))->read());
                 $pppActive = $client->query(new Query('/ppp/active/print'))->read();
                 $pppSecret = $client->query(new Query('/ppp/secret/print'))->read();
@@ -147,21 +151,30 @@ class DashboardController extends Controller
             $months[] = $key;
             $labels[] = $m->format('M Y');
         }
-        $start = Carbon::parse($months[0] . '-01')->startOfMonth();
-        $end = Carbon::parse(end($months) . '-01')->endOfMonth();
+        $start = Carbon::parse($months[0].'-01')->startOfMonth();
+        $end = Carbon::parse(end($months).'-01')->endOfMonth();
 
-        $incomeRows = DB::table('pemasukans')
+        $incomeQuery = DB::table('pemasukans')
             ->selectRaw("DATE_FORMAT(tanggal, '%Y-%m') as ym, SUM(nominal) as total")
-            ->where('tenant_id', $tenantId)
             ->whereBetween('tanggal', [$start, $end])
-            ->groupBy('ym')
-            ->get();
-        $expenseRows = DB::table('pengeluarans')
+            ->groupBy('ym');
+        if (Schema::hasColumn('pemasukans', 'tenant_id')) {
+            $incomeQuery->where('tenant_id', $tenantId);
+        } else {
+            $incomeQuery->whereRaw('1=0');
+        }
+        $incomeRows = $incomeQuery->get();
+
+        $expenseQuery = DB::table('pengeluarans')
             ->selectRaw("DATE_FORMAT(tanggal, '%Y-%m') as ym, SUM(nominal) as total")
-            ->where('tenant_id', $tenantId)
             ->whereBetween('tanggal', [$start, $end])
-            ->groupBy('ym')
-            ->get();
+            ->groupBy('ym');
+        if (Schema::hasColumn('pengeluarans', 'tenant_id')) {
+            $expenseQuery->where('tenant_id', $tenantId);
+        } else {
+            $expenseQuery->whereRaw('1=0');
+        }
+        $expenseRows = $expenseQuery->get();
 
         $incomeMap = [];
         foreach ($incomeRows as $r) {
@@ -178,6 +191,7 @@ class DashboardController extends Controller
             $income[] = $incomeMap[$m] ?? 0;
             $expense[] = $expenseMap[$m] ?? 0;
         }
+
         return response()->json([
             'labels' => $labels,
             'income' => $income,
@@ -209,8 +223,8 @@ class DashboardController extends Controller
             $months[] = $key;
             $labels[] = $m->format('M Y');
         }
-        $start = Carbon::parse($months[0] . '-01')->startOfMonth();
-        $end = Carbon::parse(end($months) . '-01')->endOfMonth();
+        $start = Carbon::parse($months[0].'-01')->startOfMonth();
+        $end = Carbon::parse(end($months).'-01')->endOfMonth();
         $allowedAreas = getAllowedAreaCoverageIdsForUser();
 
         $rows = DB::table('tagihans')
@@ -219,7 +233,7 @@ class DashboardController extends Controller
             ->where('tagihans.tenant_id', $tenantId)
             ->where('pelanggans.tenant_id', $tenantId)
             ->whereBetween('tagihans.tanggal_create_tagihan', [$start, $end])
-            ->when(!empty($allowedAreas), function ($q) use ($allowedAreas) {
+            ->when(! empty($allowedAreas), function ($q) use ($allowedAreas) {
                 $q->whereIn('pelanggans.coverage_area', $allowedAreas);
             })
             ->groupBy('ym', 'tagihans.status_bayar')
@@ -237,6 +251,7 @@ class DashboardController extends Controller
             $waiting[] = $map[$m]['Waiting Review'] ?? 0;
             $unpaid[] = $map[$m]['Belum Bayar'] ?? 0;
         }
+
         return response()->json([
             'labels' => $labels,
             'paid' => $paid,

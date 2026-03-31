@@ -6,7 +6,11 @@
                     @php
                         $settingWeb = getSettingWeb();
                     @endphp
-                    <a href="/dashboard" class="d-flex align-items-center" style="min-height: 90px;">
+                    @role('Super Admin')
+                        <a href="{{ route('tenant.dashboard') }}" class="d-flex align-items-center" style="min-height: 90px;">
+                    @else
+                        <a href="/dashboard" class="d-flex align-items-center" style="min-height: 90px;">
+                    @endrole
                         @if ($settingWeb && !empty($settingWeb->logo))
                             <img src="{{ asset('storage/uploads/logos/' . $settingWeb->logo) }}" alt="Logo Perusahaan"
                                 style="max-height: 80px; width: auto; object-fit: contain;">
@@ -53,12 +57,21 @@
         </div>
         <div class="sidebar-menu">
             <ul class="menu">
-                <li class="sidebar-item{{ request()->is('/') || request()->is('dashboard') ? ' active' : '' }}">
-                    <a class="sidebar-link" href="/dashboard">
+                @role('Super Admin')
+                    <li class="sidebar-item{{ request()->is('/') || request()->is('dashboard') || request()->is('tenant/dashboard') ? ' active' : '' }}">
+                        <a class="sidebar-link" href="{{ route('tenant.dashboard') }}">
+                            <i class="bi bi-speedometer"></i>
+                            <span> {{ __('Dashboard') }}</span>
+                        </a>
+                    </li>
+                @else
+                    <li class="sidebar-item{{ request()->is('/') || request()->is('dashboard') ? ' active' : '' }}">
+                        <a class="sidebar-link" href="/dashboard">
                         <i class="bi bi-speedometer"></i>
                         <span> {{ __('Dashboard') }}</span>
                     </a>
                 </li>
+                @endrole
                 @if (auth()->user() && \Illuminate\Support\Facades\DB::table('model_has_roles')
                         ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
                         ->where('model_has_roles.model_type', \App\Models\User::class)
