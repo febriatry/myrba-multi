@@ -118,7 +118,7 @@
                                                 <input type="checkbox" class="row-check" name="tagihan_ids[]" value="{{ $it->id }}" checked>
                                             </td>
                                             <td>{{ $it->area_nama ?? '-' }}</td>
-                                            <td>{{ $it->no_layanan ?? '-' }}</td>
+                                            <td>{{ isset($it->no_layanan) ? formatNoLayananTenant($it->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) : '-' }}</td>
                                             <td>{{ $it->pelanggan_nama ?? '-' }}</td>
                                             <td>{{ $it->no_tagihan ?? '-' }}</td>
                                             <td>{{ $it->periode ?? '-' }}</td>
@@ -154,4 +154,3 @@
         })();
     </script>
 @endpush
-

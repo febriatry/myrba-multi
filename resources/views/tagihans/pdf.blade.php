@@ -85,7 +85,7 @@
         <div>{{ $data->nama }}</div>
         <div class="small">{{ $data->alamat_customer }}</div>
         <div class="small">{{ $data->email_customer }}</div>
-        <div>No Layanan: {{ $data->no_layanan }}</div>
+        <div>No Layanan: {{ formatNoLayananTenant($data->no_layanan, (int) ($data->tenant_id ?? (auth()->user()->tenant_id ?? 0))) }}</div>
     </div>
     <div class="separator"></div>
     <table class="table">

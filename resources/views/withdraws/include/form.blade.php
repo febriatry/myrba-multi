@@ -8,7 +8,7 @@
                 @foreach ($pelanggans as $pelanggan)
                     <option value="{{ $pelanggan->id }}" data-balance="{{ $pelanggan->balance }}"
                         {{ isset($withdraw) && $withdraw->pelanggan_id == $pelanggan->id ? 'selected' : (old('pelanggan_id') == $pelanggan->id ? 'selected' : '') }}>
-                        {{ $pelanggan->nama }} ({{ $pelanggan->no_layanan }}) - Saldo: {{ rupiah($pelanggan->balance) }}
+                        {{ $pelanggan->nama }} ({{ formatNoLayananTenant($pelanggan->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }}) - Saldo: {{ rupiah($pelanggan->balance) }}
                     </option>
                 @endforeach
             </select>

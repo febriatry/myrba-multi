@@ -29,7 +29,7 @@
                                 <img src="{{ $pelanggan->photo_ktp ? asset('storage/uploads/photo_ktps/' . $pelanggan->photo_ktp) : 'https://via.placeholder.com/350?text=No+Image+Avaiable' }}"
                                     alt="Photo KTP" class="img-fluid rounded" style="max-height: 300px; object-fit: cover;">
                                 <h4 class="mt-3 mb-1">{{ $pelanggan->nama }}</h4>
-                                <p class="text-muted">No. Layanan: {{ $pelanggan->no_layanan }}</p>
+                                <p class="text-muted">No. Layanan: {{ formatNoLayananTenant($pelanggan->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }}</p>
                                 <span
                                     class="badge {{ $pelanggan->status_berlangganan == 'Aktif' ? 'bg-success' : 'bg-danger' }}">
                                     {{ $pelanggan->status_berlangganan }}
@@ -232,7 +232,7 @@
                                     <table class="table table-hover table-striped">
                                         <tr>
                                             <td class="fw-bold" width="40%">Kode Referral Anda</td>
-                                            <td><strong>{{ $pelanggan->no_layanan }}</strong></td>
+                                            <td><strong>{{ formatNoLayananTenant($pelanggan->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }}</strong></td>
                                         </tr>
                                         <tr>
                                             <td class="fw-bold">Total Pendapatan Referral</td>

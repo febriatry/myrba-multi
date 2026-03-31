@@ -42,7 +42,7 @@
                                             <option value="">Semua Pelanggan</option>
                                             @foreach ($pelanggans as $pelanggan)
                                                 <option value="{{ $pelanggan->id }}">{{ $pelanggan->nama }}
-                                                    ({{ $pelanggan->no_layanan }})
+                                                    ({{ formatNoLayananTenant($pelanggan->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }})
                                                 </option>
                                             @endforeach
                                         </select>

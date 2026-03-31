@@ -189,7 +189,7 @@
                                                     </td>
                                                     <td>
                                                         <div>{{ $c->nama }}</div>
-                                                        <div class="text-muted">{{ $c->no_layanan }}</div>
+                                                        <div class="text-muted">{{ formatNoLayananTenant($c->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }}</div>
                                                     </td>
                                                     <td>{{ $c->area_nama ?? '-' }}</td>
                                                     <td>{{ (int) $c->unpaid_count }}</td>
@@ -228,4 +228,3 @@
         })();
     </script>
 @endsection
-

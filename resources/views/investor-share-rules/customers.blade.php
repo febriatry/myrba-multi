@@ -83,7 +83,7 @@
                                                 <input type="hidden" name="page_pelanggan_ids[]" value="{{ $p->id }}">
                                                 <input type="checkbox" class="ckPelanggan" name="pelanggan_ids[]" value="{{ $p->id }}" @checked(in_array((int) $p->id, $selectedIds, true))>
                                             </td>
-                                            <td>{{ $p->no_layanan }}</td>
+                                            <td>{{ formatNoLayananTenant($p->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }}</td>
                                             <td>{{ $p->nama }}</td>
                                             <td>{{ $p->area_nama ?? '-' }}</td>
                                             <td>{{ $p->paket_nama ?? '-' }}</td>

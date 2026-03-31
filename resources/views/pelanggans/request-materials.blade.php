@@ -8,7 +8,7 @@
             <div class="row">
                 <div class="col-12 col-md-8 order-md-1 order-last">
                     <h3>{{ __('Material Pemasangan') }}</h3>
-                    <p class="text-subtitle text-muted">{{ __('Pelanggan: :nama (:no)', ['nama' => $pelanggan->nama, 'no' => $pelanggan->no_layanan]) }}</p>
+                    <p class="text-subtitle text-muted">{{ __('Pelanggan: :nama (:no)', ['nama' => $pelanggan->nama, 'no' => formatNoLayananTenant($pelanggan->no_layanan, (int) (auth()->user()->tenant_id ?? 0))]) }}</p>
                     <p class="text-subtitle text-muted">
                         {{ __('Status Validasi Gudang') }}:
                         @if (($pelanggan->material_status ?? 'Pending') === 'Approved')

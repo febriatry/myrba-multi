@@ -175,6 +175,9 @@ class PelangganController extends Controller
 
             return Datatables::of($pelanggans)
                 ->addIndexColumn()
+                ->editColumn('no_layanan', function ($row) use ($tenantId) {
+                    return formatNoLayananTenant($row->no_layanan, $tenantId);
+                })
                 ->addColumn('alamat', function ($row) {
                     return str($row->alamat)->limit(100);
                 })
@@ -243,6 +246,11 @@ class PelangganController extends Controller
 
         return DataTables::of($pelanggans)
             ->addIndexColumn()
+            ->editColumn('no_layanan', function ($row) {
+                $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+
+                return formatNoLayananTenant($row->no_layanan, $tenantId);
+            })
             ->addColumn('action', 'pelanggans.include.action')
             ->toJson();
     }
@@ -857,7 +865,8 @@ class PelangganController extends Controller
                     ->where('no_port_odp', $x)
                     ->first();
                 if ($cek) {
-                    $array[$x] = $cek->no_layanan.' - '.$cek->nama;
+                    $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+                    $array[$x] = formatNoLayananTenant($cek->no_layanan, $tenantId).' - '.$cek->nama;
                 } else {
                     $array[$x] = 'Kosong';
                 }
@@ -1497,11 +1506,31 @@ class PelangganController extends Controller
 
     public function searchPelanggan(Request $request)
     {
-        $search = $request->term;
-        $pelanggans = Pelanggan::where('nama', 'LIKE', "%{$search}%")
-            ->orWhere('no_layanan', 'LIKE', "%{$search}%")
+        $search = (string) ($request->term ?? '');
+        $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+        if ($tenantId < 1) {
+            $tenantId = 1;
+        }
+        [, $searchNoLayanan] = parsePrefixedNoLayanan($search);
+
+        $pelanggans = Pelanggan::query()
+            ->where('tenant_id', $tenantId)
+            ->where(function ($q) use ($search, $searchNoLayanan) {
+                $q->where('nama', 'LIKE', "%{$search}%")
+                    ->orWhere('no_layanan', 'LIKE', "%{$search}%")
+                    ->orWhere('no_layanan', 'LIKE', "%{$searchNoLayanan}%");
+            })
             ->limit(10)
-            ->get(['id', 'nama', 'no_layanan']);
+            ->get(['id', 'nama', 'no_layanan'])
+            ->map(function ($p) use ($tenantId) {
+                return [
+                    'id' => (int) $p->id,
+                    'nama' => (string) $p->nama,
+                    'no_layanan' => (string) $p->no_layanan,
+                    'no_layanan_label' => formatNoLayananTenant($p->no_layanan, $tenantId),
+                ];
+            })
+            ->values();
 
         return response()->json($pelanggans);
     }

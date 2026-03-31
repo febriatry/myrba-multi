@@ -128,7 +128,7 @@
                 <tr>
                     <td>{{ $r['pelanggan_id'] ?? '-' }}</td>
                     <td>{{ $r['nama'] ?? '-' }}</td>
-                    <td>{{ $r['no_layanan'] ?? '-' }}</td>
+                    <td>{{ isset($r['no_layanan']) ? formatNoLayananTenant($r['no_layanan'], (int) (auth()->user()->tenant_id ?? 0)) : '-' }}</td>
                     <td>{{ $r['status'] ?? '-' }}</td>
                     <td>{{ $r['router_id'] ?? '-' }}</td>
                     <td>{{ $r['user_pppoe'] ?? '-' }}</td>
@@ -189,7 +189,7 @@
                     <td>{{ $d['user_pppoe'] ?? '-' }}</td>
                     <td>
                         @foreach (($d['rows'] ?? []) as $r)
-                            {{ ($r->id ?? '-') . ' - ' . ($r->no_layanan ?? '-') . ' - ' . ($r->nama ?? '-') . ' - ' . ($r->status_berlangganan ?? '-') }}<br>
+                            {{ ($r->id ?? '-') . ' - ' . (isset($r->no_layanan) ? formatNoLayananTenant($r->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) : '-') . ' - ' . ($r->nama ?? '-') . ' - ' . ($r->status_berlangganan ?? '-') }}<br>
                         @endforeach
                     </td>
                 </tr>
@@ -225,4 +225,3 @@
 </body>
 
 </html>
-

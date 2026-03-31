@@ -25,7 +25,7 @@
             <div class="card">
                 <div class="card-body">
                     <div class="mb-3">
-                        <div><strong>{{ __('Pelanggan') }}</strong>: {{ $pelanggan->nama }} ({{ $pelanggan->no_layanan }})</div>
+                        <div><strong>{{ __('Pelanggan') }}</strong>: {{ $pelanggan->nama }} ({{ formatNoLayananTenant($pelanggan->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }})</div>
                         <div><strong>{{ __('Status') }}</strong>: {{ $pelanggan->status_berlangganan }}</div>
                     </div>
 

@@ -184,7 +184,7 @@
                                     <table class="table table-hover table-striped">
                                         <tr>
                                             <td class="fw-bold">{{ __('ID Pelanggan') }}</td>
-                                            <td>{{ $tagihan->no_layanan }}</td>
+                                            <td>{{ formatNoLayananTenant($tagihan->no_layanan, (int) ($tagihan->tenant_id ?? 0)) }}</td>
                                         </tr>
                                         <tr>
                                             <td class="fw-bold">{{ __('No Tagihan') }}</td>

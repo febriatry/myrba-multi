@@ -157,7 +157,7 @@
                                                     <tr>
                                                         <td>{{ $r['pelanggan_id'] }}</td>
                                                         <td>{{ $r['nama'] }}</td>
-                                                        <td>{{ $r['no_layanan'] }}</td>
+                                                        <td>{{ formatNoLayananTenant($r['no_layanan'], (int) (auth()->user()->tenant_id ?? 0)) }}</td>
                                                         <td>{{ $r['status'] }}</td>
                                                         <td>{{ $r['router_id'] }}</td>
                                                         <td>{{ $r['user_pppoe'] }}</td>
@@ -246,7 +246,7 @@
                                                             <tr>
                                                                 <td>{{ $r->id }}</td>
                                                                 <td>{{ $r->nama }}</td>
-                                                                <td>{{ $r->no_layanan }}</td>
+                                                                <td>{{ formatNoLayananTenant($r->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }}</td>
                                                                 <td>{{ $r->status_berlangganan }}</td>
                                                             </tr>
                                                         @endforeach

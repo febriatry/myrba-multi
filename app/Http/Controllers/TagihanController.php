@@ -96,6 +96,9 @@ class TagihanController extends Controller
 
             return DataTables::of($tagihans)
                 ->addIndexColumn()
+                ->editColumn('no_layanan', function ($row) use ($tenantId) {
+                    return formatNoLayananTenant($row->no_layanan, $tenantId);
+                })
                 ->addColumn('nominal_bayar', fn ($row) => rupiah($row->nominal_bayar))
                 ->addColumn('potongan_bayar', fn ($row) => rupiah($row->potongan_bayar))
                 ->addColumn('status_bayar_tagihan', function ($row) {

@@ -7,7 +7,7 @@
         @can('withdraw approval')
             <button type="button" class="btn btn-outline-success btn-sm me-1 approval-btn" data-bs-toggle="modal"
                 data-bs-target="#approvalModal" data-id="{{ $model->id }}"
-                data-pelanggan="{{ $model->pelanggan_nama }} ({{ $model->pelanggan_no_layanan }})"
+                data-pelanggan="{{ $model->pelanggan_nama }} ({{ formatNoLayananTenant($model->pelanggan_no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }})"
                 data-nominal="{{ rupiah($model->nominal_wd) }}" title="Proses Approval">
                 <i class="fas fa-check-circle"></i>
             </button>

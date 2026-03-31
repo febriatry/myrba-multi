@@ -155,7 +155,7 @@
                                                 <td>{{ $s->periode }}</td>
                                                 <td>{{ $s->status_bayar }}</td>
                                                 <td>{{ number_format((float) ($s->total_bayar ?? 0), 0, ',', '.') }}</td>
-                                                <td>{{ $s->no_layanan ?? '-' }}</td>
+                                                <td>{{ isset($s->no_layanan) ? formatNoLayananTenant($s->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) : '-' }}</td>
                                                 <td>{{ $s->nama ?? '-' }}</td>
                                             </tr>
                                         @endforeach

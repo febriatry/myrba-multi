@@ -49,8 +49,9 @@
                                     <div class="form-group">
                                         <label for="no-tagihan">{{ __('ID Pelanggan') }}</label>
                                         <div class="input-group mb-3">
-                                            <input type="text" name="no_layanan" required class="form-control" readonly
-                                                value="{{ $model->no_layanan }}" />
+                                            <input type="hidden" name="no_layanan" value="{{ $model->no_layanan }}">
+                                            <input type="text" class="form-control" readonly
+                                                value="{{ formatNoLayananTenant($model->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }}" />
                                         </div>
                                     </div>
                                 </div>

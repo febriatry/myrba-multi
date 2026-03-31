@@ -25,7 +25,7 @@
             <div class="card">
                 <div class="card-body">
                     <div class="mb-3">
-                        <div><strong>{{ __('Pelanggan') }}</strong>: {{ $pelanggan->nama }} ({{ $pelanggan->no_layanan }})</div>
+                        <div><strong>{{ __('Pelanggan') }}</strong>: {{ $pelanggan->nama }} ({{ formatNoLayananTenant($pelanggan->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }})</div>
                         <div><strong>{{ __('Return ID') }}</strong>: {{ (int) $row->id }}</div>
                         <div><strong>{{ __('Status Return') }}</strong>: {{ $row->status_return }}</div>
                         <div><strong>{{ __('Dibuat') }}</strong>: {{ \Carbon\Carbon::parse($row->created_at)->format('d-m-Y H:i') }} {{ $createdByName ? 'oleh ' . $createdByName : '' }}</div>
@@ -111,4 +111,3 @@
         </div>
     </div>
 @endsection
-

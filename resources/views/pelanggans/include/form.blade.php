@@ -66,6 +66,7 @@
         <div class="form-group">
             <label for="no-layanan">{{ __('ID Pelanggan') }}</label>
             <div class="input-group mb-3">
+                <span class="input-group-text">{{ getTenantLetterPrefix((int) (auth()->user()->tenant_id ?? 0)) }}</span>
                 <input type="text" name="no_layanan" required readonly id="no-layanan"
                     class="form-control @error('no_layanan') is-invalid @enderror"
                     value="{{ isset($pelanggan) ? $pelanggan->no_layanan : old('no_layanan') }}"
@@ -839,7 +840,7 @@
                         return {
                             results: $.map(data, function(item) {
                                 return {
-                                    text: item.nama + ' (' + item.no_layanan + ')',
+                                    text: item.nama + ' (' + (item.no_layanan_label || item.no_layanan) + ')',
                                     id: item.no_layanan
                                 }
                             })

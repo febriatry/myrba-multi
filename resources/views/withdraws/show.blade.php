@@ -27,7 +27,7 @@
                                 <table class="table table-hover table-striped">
                                     <tr>
                                         <td class="fw-bold">{{ __('Pelanggan') }}</td>
-                                        <td>: {{ $withdraw->pelanggan->nama }} ({{ $withdraw->pelanggan->no_layanan }})</td>
+                                        <td>: {{ $withdraw->pelanggan->nama }} ({{ formatNoLayananTenant($withdraw->pelanggan->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }})</td>
                                     </tr>
                                     <tr>
                                         <td class="fw-bold">{{ __('Nominal Withdraw') }}</td>

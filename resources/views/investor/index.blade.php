@@ -93,7 +93,7 @@
                                         }
                                     @endphp
                                     <tr>
-                                        <td>{{ $p->no_layanan }}</td>
+                                        <td>{{ formatNoLayananTenant($p->no_layanan, (int) (auth()->user()->tenant_id ?? 0)) }}</td>
                                         <td>{{ $p->nama }}</td>
                                         <td>{{ $p->area_nama ?? '-' }}</td>
                                         <td>{{ $p->paket_nama ?? '-' }}</td>
