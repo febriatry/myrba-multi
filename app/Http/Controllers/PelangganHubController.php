@@ -30,23 +30,27 @@ class PelangganHubController extends Controller
                 'key' => 'balance',
                 'label' => 'Historical Balance',
                 'permission' => 'balance history view',
+                'feature' => 'investor',
                 'src' => route('balance-histories.index', ['embed' => 1]),
             ],
             [
                 'key' => 'topup',
                 'label' => 'Topup',
                 'permission' => 'topup view',
+                'feature' => 'investor',
                 'src' => route('topups.index', ['embed' => 1]),
             ],
             [
                 'key' => 'withdraw',
                 'label' => 'Withdraw',
                 'permission' => ['withdraw view', 'withdraw approval', 'withdraw create', 'withdraw edit', 'withdraw delete'],
+                'feature' => 'investor',
                 'src' => route('withdraws.index', ['embed' => 1]),
             ],
         ];
 
         $tab = (string) $request->query('tab', 'daftar');
+
         return view('hub.tabs', [
             'title' => 'Pelanggan',
             'subtitle' => 'Data pelanggan dan transaksi saldo.',
@@ -56,4 +60,3 @@ class PelangganHubController extends Controller
         ]);
     }
 }
-

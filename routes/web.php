@@ -388,42 +388,42 @@ Route::get('/audit-pelanggan/export/pdf', [App\Http\Controllers\AuditPelangganCo
 
 Route::get('investor-share-rules/{id}/customers', [App\Http\Controllers\InvestorShareRuleController::class, 'customers'])
     ->name('investor-share-rules.customers')
-    ->middleware(['auth', 'permission:investor rule manage']);
+    ->middleware(['auth', 'permission:investor rule manage', 'tenant.feature:investor']);
 Route::post('investor-share-rules/{id}/customers', [App\Http\Controllers\InvestorShareRuleController::class, 'customersUpdate'])
     ->name('investor-share-rules.customers.update')
-    ->middleware(['auth', 'permission:investor rule manage']);
+    ->middleware(['auth', 'permission:investor rule manage', 'tenant.feature:investor']);
 Route::get('investor-share-rules/{id}/backfill', [App\Http\Controllers\InvestorShareRuleController::class, 'backfill'])
     ->name('investor-share-rules.backfill')
-    ->middleware(['auth', 'permission:investor rule manage']);
+    ->middleware(['auth', 'permission:investor rule manage', 'tenant.feature:investor']);
 Route::post('investor-share-rules/{id}/backfill', [App\Http\Controllers\InvestorShareRuleController::class, 'backfillRun'])
     ->name('investor-share-rules.backfill.run')
-    ->middleware(['auth', 'permission:investor rule manage']);
-Route::resource('investor-share-rules', App\Http\Controllers\InvestorShareRuleController::class)->middleware(['auth', 'permission:investor rule manage']);
+    ->middleware(['auth', 'permission:investor rule manage', 'tenant.feature:investor']);
+Route::resource('investor-share-rules', App\Http\Controllers\InvestorShareRuleController::class)->middleware(['auth', 'permission:investor rule manage', 'tenant.feature:investor']);
 
 Route::get('investor-payout-requests', [App\Http\Controllers\InvestorPayoutApprovalController::class, 'index'])
     ->name('investor-payout-requests.index')
-    ->middleware(['auth', 'permission:investor payout approve']);
+    ->middleware(['auth', 'permission:investor payout approve', 'tenant.feature:investor']);
 Route::post('investor-payout-requests/{id}/approve', [App\Http\Controllers\InvestorPayoutApprovalController::class, 'approve'])
     ->name('investor-payout-requests.approve')
-    ->middleware(['auth', 'permission:investor payout approve']);
+    ->middleware(['auth', 'permission:investor payout approve', 'tenant.feature:investor']);
 
 Route::get('investor-payouts', [App\Http\Controllers\InvestorPayoutRequestController::class, 'index'])
     ->name('investor-payouts.index')
-    ->middleware(['auth', 'permission:investor payout request']);
+    ->middleware(['auth', 'permission:investor payout request', 'tenant.feature:investor']);
 Route::post('investor-payouts', [App\Http\Controllers\InvestorPayoutRequestController::class, 'store'])
     ->name('investor-payouts.store')
-    ->middleware(['auth', 'permission:investor payout request']);
+    ->middleware(['auth', 'permission:investor payout request', 'tenant.feature:investor']);
 
 Route::get('investor-payout-account', [App\Http\Controllers\InvestorPayoutAccountController::class, 'edit'])
     ->name('investor-payout-account.index')
-    ->middleware(['auth', 'permission:investor payout request']);
+    ->middleware(['auth', 'permission:investor payout request', 'tenant.feature:investor']);
 Route::post('investor-payout-account', [App\Http\Controllers\InvestorPayoutAccountController::class, 'update'])
     ->name('investor-payout-account.update')
-    ->middleware(['auth', 'permission:investor payout request']);
+    ->middleware(['auth', 'permission:investor payout request', 'tenant.feature:investor']);
 
 Route::get('/investor-hub', [App\Http\Controllers\InvestorHubController::class, 'index'])
     ->name('investor-hub.index')
-    ->middleware('auth');
+    ->middleware(['auth', 'tenant.feature:investor']);
 
 Route::resource('hr-employees', App\Http\Controllers\HrEmployeeController::class)->except(['show'])
     ->middleware(['auth', 'permission:attendance manage']);
