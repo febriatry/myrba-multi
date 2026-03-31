@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePelangganRequest extends FormRequest
 {
@@ -23,15 +24,30 @@ class StorePelangganRequest extends FormRequest
      */
     public function rules()
     {
+        $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+        if ($tenantId < 1) {
+            $tenantId = 1;
+        }
+
         return [
             'coverage_area' => 'required|exists:App\Models\AreaCoverage,id',
             'odc' => 'nullable|exists:App\Models\Odc,id',
             'odp' => 'nullable|exists:App\Models\Odp,id',
             'no_port_odp' => 'nullable',
-            'no_layanan' => 'required|string|max:12',
+            'no_layanan' => [
+                'required',
+                'string',
+                'max:12',
+                'regex:/^[0-9]+$/',
+                Rule::unique('pelanggans', 'no_layanan')->where('tenant_id', $tenantId),
+            ],
             'nama' => 'required|string|max:255',
             'tanggal_daftar' => 'required|date',
-            'email' => 'required|email|unique:pelanggans,email',
+            'email' => [
+                'required',
+                'email',
+                Rule::unique('pelanggans', 'email')->where('tenant_id', $tenantId),
+            ],
             'no_wa' => 'required|string|max:15',
             'no_ktp' => 'nullable|string|max:50',
             'photo_ktp' => 'required|image|max:3024',
@@ -49,8 +65,43 @@ class StorePelangganRequest extends FormRequest
             'mode_user' => 'nullable|required_with:router|string|max:100',
             'user_pppoe' => 'nullable|required_if:mode_user,PPPOE|string|max:100',
             'user_static' => 'nullable|required_if:mode_user,Static|string|max:100',
-            'kode_referal' => 'nullable|exists:pelanggans,no_layanan',
+            'kode_referal' => [
+                'nullable',
+                Rule::exists('pelanggans', 'no_layanan')->where('tenant_id', $tenantId),
+            ],
             'generate_tagihan' => 'nullable|boolean',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $noLayanan = $this->input('no_layanan');
+        if (is_string($noLayanan)) {
+            [$tidGuess, $nl] = parsePrefixedNoLayanan($noLayanan);
+            if ($tidGuess > 0 && $nl !== '') {
+                $this->merge([
+                    'no_layanan' => $nl,
+                    '_no_layanan_tid_guess' => $tidGuess,
+                ]);
+            } else {
+                $this->merge(['no_layanan' => trim($noLayanan)]);
+            }
+        }
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $tidGuess = (int) ($this->input('_no_layanan_tid_guess') ?? 0);
+            if ($tidGuess > 0) {
+                $tenantId = (int) (auth()->user()->tenant_id ?? 0);
+                if ($tenantId < 1) {
+                    $tenantId = 1;
+                }
+                if ($tidGuess !== $tenantId) {
+                    $validator->errors()->add('no_layanan', 'Prefix no layanan tidak sesuai tenant.');
+                }
+            }
+        });
     }
 }

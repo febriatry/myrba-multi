@@ -56,6 +56,8 @@ class WebController extends Controller
         $tagihan = DB::table('tagihans')
             ->leftJoin('pelanggans', 'tagihans.pelanggan_id', '=', 'pelanggans.id')
             ->select('tagihans.*', 'pelanggans.nama', 'pelanggans.no_layanan')
+            ->where('tagihans.tenant_id', $tenantId)
+            ->where('pelanggans.tenant_id', $tenantId)
             ->where('pelanggans.no_layanan', '=', $noLayanan)
             ->where('tagihans.status_bayar', '=', 'Belum Bayar')
             ->orderBy('tagihans.id', 'asc')
@@ -64,6 +66,8 @@ class WebController extends Controller
         if ($tagihan) {
             $tagihanCount = DB::table('tagihans')
                 ->leftJoin('pelanggans', 'tagihans.pelanggan_id', '=', 'pelanggans.id')
+                ->where('tagihans.tenant_id', $tenantId)
+                ->where('pelanggans.tenant_id', $tenantId)
                 ->where('pelanggans.no_layanan', '=', $noLayanan)
                 ->where('tagihans.status_bayar', '=', 'Belum Bayar')
                 ->count();
