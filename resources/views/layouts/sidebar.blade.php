@@ -152,6 +152,9 @@
                                     <a href="{{ route('tenant.wa.report') }}">WA Report</a>
                                 </li>
                             @endif
+                            <li class="submenu-item{{ request()->is('tenant/sync-permissions') ? ' active' : '' }}">
+                                <a href="{{ route('tenant.sync-permissions') }}">Sync Permission</a>
+                            </li>
                         </ul>
                     </li>
                 @endif

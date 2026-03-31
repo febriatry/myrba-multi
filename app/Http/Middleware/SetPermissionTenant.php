@@ -21,12 +21,13 @@ class SetPermissionTenant
         if ($tenantId > 0 && $user && $user->hasRole('Super Admin')) {
             $registrar->forgetCachedPermissions();
 
+            $role = Role::findOrCreate('Super Admin', 'web');
             $permCount = (int) Permission::query()->count();
+            $rolePermCount = (int) $role->permissions()->count();
             $cacheKey = 'super_admin_perm_sync:tenant:'.$tenantId.':count';
             $lastCount = (int) Cache::get($cacheKey, 0);
 
-            if ($lastCount !== $permCount) {
-                $role = Role::findOrCreate('Super Admin', 'web');
+            if ($rolePermCount < $permCount || $lastCount !== $permCount) {
                 $role->syncPermissions(Permission::all());
                 $registrar->forgetCachedPermissions();
                 Cache::put($cacheKey, $permCount, now()->addDays(7));

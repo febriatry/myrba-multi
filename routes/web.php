@@ -13,6 +13,7 @@ use App\Http\Controllers\TenantAdminDashboardController;
 use App\Http\Controllers\TenantPaymentController;
 use App\Http\Controllers\TenantPlanController;
 use App\Http\Controllers\TenantPlatformController;
+use App\Http\Controllers\TenantSuperAdminToolsController;
 use App\Http\Controllers\TenantWaController;
 use App\Http\Controllers\WaTunggakanBroadcastController;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +58,7 @@ Route::controller(App\Http\Controllers\Frontend\WebController::class)->group(fun
 // PANEL ADMIN
 Route::middleware(['auth', 'web'])->group(function () {
     Route::get('/tenant/dashboard', [TenantAdminDashboardController::class, 'index'])->name('tenant.dashboard');
+    Route::get('/tenant/sync-permissions', [TenantSuperAdminToolsController::class, 'syncPermissions'])->name('tenant.sync-permissions');
     Route::middleware(['tenant.feature:whatsapp'])->group(function () {
         Route::get('/tenant/wa-settings', [TenantWaController::class, 'settings'])->name('tenant.wa.settings');
         Route::post('/tenant/wa-settings', [TenantWaController::class, 'updateSettings'])->name('tenant.wa.settings.update');
