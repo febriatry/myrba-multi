@@ -96,57 +96,59 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::get('/wa-status-logs', [\App\Http\Controllers\WaStatusLogController::class, 'index'])->name('wa-status-logs.index');
         Route::get('/wa-status-logs/export-csv', [\App\Http\Controllers\WaStatusLogController::class, 'exportCsv'])->name('wa-status-logs.export-csv');
     });
-    Route::get('/wa-hub', [\App\Http\Controllers\WaHubController::class, 'index'])->name('wa-hub.index');
+    Route::get('/wa-hub', [\App\Http\Controllers\WaHubController::class, 'index'])
+        ->name('wa-hub.index')
+        ->middleware('tenant.feature:whatsapp');
     Route::get('/wa-blast', function () {
         return redirect()->route('sendnotifs.index');
-    })->name('wa-blast.index');
-    Route::get('/wa-tunggakan', [WaTunggakanBroadcastController::class, 'index'])->name('wa-tunggakan.index');
-    Route::get('/wa-tunggakan/data', [WaTunggakanBroadcastController::class, 'data'])->name('wa-tunggakan.data');
-    Route::post('/wa-tunggakan/send', [WaTunggakanBroadcastController::class, 'send'])->name('wa-tunggakan.send');
-    Route::resource('banks', App\Http\Controllers\BankController::class);
-    Route::resource('bank-accounts', App\Http\Controllers\BankAccountController::class);
-    Route::resource('package-categories', App\Http\Controllers\PackageCategoryController::class);
-    Route::resource('packages', App\Http\Controllers\PackageController::class);
-    Route::resource('area-coverages', App\Http\Controllers\AreaCoverageController::class);
-    Route::get('/layanan-hub', [\App\Http\Controllers\LayananHubController::class, 'index'])->name('layanan-hub.index');
-    Route::resource('profile-pppoes', App\Http\Controllers\ProfilePppoeController::class);
-    Route::resource('active-ppps', App\Http\Controllers\ActivePppController::class);
-    Route::resource('non-active-ppps', App\Http\Controllers\ActiveNonPppController::class);
-    Route::controller(App\Http\Controllers\ActivePppController::class)->group(function () {
+    })->name('wa-blast.index')->middleware('tenant.feature:whatsapp');
+    Route::get('/wa-tunggakan', [WaTunggakanBroadcastController::class, 'index'])->name('wa-tunggakan.index')->middleware('tenant.feature:whatsapp');
+    Route::get('/wa-tunggakan/data', [WaTunggakanBroadcastController::class, 'data'])->name('wa-tunggakan.data')->middleware('tenant.feature:whatsapp');
+    Route::post('/wa-tunggakan/send', [WaTunggakanBroadcastController::class, 'send'])->name('wa-tunggakan.send')->middleware('tenant.feature:whatsapp');
+    Route::resource('banks', App\Http\Controllers\BankController::class)->middleware('tenant.feature:finance');
+    Route::resource('bank-accounts', App\Http\Controllers\BankAccountController::class)->middleware('tenant.feature:finance');
+    Route::resource('package-categories', App\Http\Controllers\PackageCategoryController::class)->middleware('tenant.feature:layanan');
+    Route::resource('packages', App\Http\Controllers\PackageController::class)->middleware('tenant.feature:layanan');
+    Route::resource('area-coverages', App\Http\Controllers\AreaCoverageController::class)->middleware('tenant.feature:layanan');
+    Route::get('/layanan-hub', [\App\Http\Controllers\LayananHubController::class, 'index'])->name('layanan-hub.index')->middleware('tenant.feature:layanan');
+    Route::resource('profile-pppoes', App\Http\Controllers\ProfilePppoeController::class)->middleware('tenant.feature:pppoe');
+    Route::resource('active-ppps', App\Http\Controllers\ActivePppController::class)->middleware('tenant.feature:pppoe');
+    Route::resource('non-active-ppps', App\Http\Controllers\ActiveNonPppController::class)->middleware('tenant.feature:pppoe');
+    Route::controller(App\Http\Controllers\ActivePppController::class)->middleware('tenant.feature:pppoe')->group(function () {
         Route::get('monitoring', 'monitoring')->name('monitoring');
     });
-    Route::controller(App\Http\Controllers\SecretPppController::class)->group(function () {
+    Route::controller(App\Http\Controllers\SecretPppController::class)->middleware('tenant.feature:pppoe')->group(function () {
         Route::put('enableSecret/{id}', 'enable')->name('secret-ppps.enable');
         Route::put('disableSecret/{id}/{name}', 'disable')->name('secret-ppps.disable');
         Route::delete('deleteSecret/{id}/{name}', 'deleteSecret')->name('secret-ppps.deleteSecret');
     });
-    Route::resource('hotspotprofiles', App\Http\Controllers\HotspotprofileController::class);
-    Route::controller(App\Http\Controllers\HotspotprofileController::class)->group(function () {
+    Route::resource('hotspotprofiles', App\Http\Controllers\HotspotprofileController::class)->middleware('tenant.feature:hotspot');
+    Route::controller(App\Http\Controllers\HotspotprofileController::class)->middleware('tenant.feature:hotspot')->group(function () {
         Route::delete('deleteProfile/{id}/{name}', 'deleteProfile')->name('hotspotprofiles.deleteProfile');
     });
 
-    Route::resource('secret-ppps', App\Http\Controllers\SecretPppController::class);
-    Route::get('/pppoe-hub', [\App\Http\Controllers\PppoeHubController::class, 'index'])->name('pppoe-hub.index');
-    Route::resource('logs', App\Http\Controllers\LogController::class);
-    Route::resource('activity-logs', App\Http\Controllers\ActivityLogController::class)->only(['index']);
-    Route::get('/utilities-hub', [\App\Http\Controllers\UtilitiesHubController::class, 'index'])->name('utilities-hub.index');
-    Route::resource('dhcps', App\Http\Controllers\DhcpController::class);
-    Route::resource('interfaces', App\Http\Controllers\InterfaceController::class);
-    Route::resource('statics', App\Http\Controllers\StaticController::class);
-    Route::resource('settingmikrotiks', App\Http\Controllers\SettingmikrotikController::class);
+    Route::resource('secret-ppps', App\Http\Controllers\SecretPppController::class)->middleware('tenant.feature:pppoe');
+    Route::get('/pppoe-hub', [\App\Http\Controllers\PppoeHubController::class, 'index'])->name('pppoe-hub.index')->middleware('tenant.feature:pppoe');
+    Route::resource('logs', App\Http\Controllers\LogController::class)->middleware('tenant.feature:network');
+    Route::resource('activity-logs', App\Http\Controllers\ActivityLogController::class)->only(['index'])->middleware('tenant.feature:settings');
+    Route::get('/utilities-hub', [\App\Http\Controllers\UtilitiesHubController::class, 'index'])->name('utilities-hub.index')->middleware('tenant.feature:settings');
+    Route::resource('dhcps', App\Http\Controllers\DhcpController::class)->middleware('tenant.feature:network');
+    Route::resource('interfaces', App\Http\Controllers\InterfaceController::class)->middleware('tenant.feature:network');
+    Route::resource('statics', App\Http\Controllers\StaticController::class)->middleware('tenant.feature:network');
+    Route::resource('settingmikrotiks', App\Http\Controllers\SettingmikrotikController::class)->middleware('tenant.feature:network');
 
-    Route::resource('statusrouters', App\Http\Controllers\StatusrouterController::class);
-    Route::get('/router-hub', [\App\Http\Controllers\RouterHubController::class, 'index'])->name('router-hub.index');
-    Route::controller(App\Http\Controllers\StatusrouterController::class)->group(function () {
+    Route::resource('statusrouters', App\Http\Controllers\StatusrouterController::class)->middleware('tenant.feature:network');
+    Route::get('/router-hub', [\App\Http\Controllers\RouterHubController::class, 'index'])->name('router-hub.index')->middleware('tenant.feature:network');
+    Route::controller(App\Http\Controllers\StatusrouterController::class)->middleware('tenant.feature:network')->group(function () {
         Route::get('reboot', 'reboot')->name('reboot');
     });
-    Route::resource('hotspotactives', App\Http\Controllers\HotspotactiveController::class);
-    Route::resource('hotspotusers', App\Http\Controllers\HotspotuserController::class);
-    Route::get('/hotspot-hub', [\App\Http\Controllers\HotspotHubController::class, 'index'])->name('hotspot-hub.index');
-    Route::get('/network-hub', [\App\Http\Controllers\NetworkHubController::class, 'index'])->name('network-hub.index');
-    Route::get('/cms-hub', [\App\Http\Controllers\CmsHubController::class, 'index'])->name('cms-hub.index');
-    Route::get('/settings-hub', [\App\Http\Controllers\SettingsHubController::class, 'index'])->name('settings-hub.index');
-    Route::controller(App\Http\Controllers\HotspotuserController::class)->group(function () {
+    Route::resource('hotspotactives', App\Http\Controllers\HotspotactiveController::class)->middleware('tenant.feature:hotspot');
+    Route::resource('hotspotusers', App\Http\Controllers\HotspotuserController::class)->middleware('tenant.feature:hotspot');
+    Route::get('/hotspot-hub', [\App\Http\Controllers\HotspotHubController::class, 'index'])->name('hotspot-hub.index')->middleware('tenant.feature:hotspot');
+    Route::get('/network-hub', [\App\Http\Controllers\NetworkHubController::class, 'index'])->name('network-hub.index')->middleware('tenant.feature:network');
+    Route::get('/cms-hub', [\App\Http\Controllers\CmsHubController::class, 'index'])->name('cms-hub.index')->middleware('tenant.feature:cms');
+    Route::get('/settings-hub', [\App\Http\Controllers\SettingsHubController::class, 'index'])->name('settings-hub.index')->middleware('tenant.feature:settings');
+    Route::controller(App\Http\Controllers\HotspotuserController::class)->middleware('tenant.feature:hotspot')->group(function () {
         Route::put('enableHotspot/{id}', 'enable')->name('hotspotusers.enable');
         Route::put('disableHotspot/{id}/{user}', 'disable')->name('hotspotusers.disable');
         Route::put('resetHotspot/{id}', 'reset')->name('hotspotusers.reset');
@@ -154,23 +156,28 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::get('deleteByComment', 'deleteByComment')->name('hotspotusers.deleteByComment');
         Route::get('cetakVoucher', 'cetakVoucher')->name('hotspotusers.cetakVoucher');
     });
-    Route::resource('odcs', App\Http\Controllers\OdcController::class);
-    Route::resource('odps', App\Http\Controllers\OdpController::class);
-    Route::resource('pelanggans', App\Http\Controllers\PelangganController::class);
+    Route::resource('odcs', App\Http\Controllers\OdcController::class)->middleware('tenant.feature:layanan');
+    Route::resource('odps', App\Http\Controllers\OdpController::class)->middleware('tenant.feature:layanan');
+    Route::resource('pelanggans', App\Http\Controllers\PelangganController::class)->middleware('tenant.feature:pelanggan');
     Route::get('/pelanggans-request', [App\Http\Controllers\PelangganController::class, 'requestIndex'])
-        ->name('pelanggans-request.index');
+        ->name('pelanggans-request.index')
+        ->middleware('tenant.feature:pelanggan');
     Route::get('/pelanggans-request/data', [App\Http\Controllers\PelangganController::class, 'requestData'])
-        ->name('pelanggans-request.data');
+        ->name('pelanggans-request.data')
+        ->middleware('tenant.feature:pelanggan');
     Route::get('/pelanggans-request/{id}/materials', [App\Http\Controllers\PelangganController::class, 'requestMaterials'])
-        ->name('pelanggans-request.materials');
+        ->name('pelanggans-request.materials')
+        ->middleware('tenant.feature:pelanggan');
     Route::post('/pelanggans-request/{id}/materials', [App\Http\Controllers\PelangganController::class, 'requestMaterialsStore'])
-        ->name('pelanggans-request.materials.store');
+        ->name('pelanggans-request.materials.store')
+        ->middleware('tenant.feature:pelanggan');
     Route::post('/pelanggans-request/{id}/materials/approve', [App\Http\Controllers\PelangganController::class, 'requestMaterialsApprove'])
-        ->name('pelanggans-request.materials.approve');
+        ->name('pelanggans-request.materials.approve')
+        ->middleware('tenant.feature:pelanggan');
 
     Route::get('/pelanggan-hub', [App\Http\Controllers\PelangganHubController::class, 'index'])
         ->name('pelanggan-hub.index')
-        ->middleware('auth');
+        ->middleware('tenant.feature:pelanggan');
     Route::controller(App\Http\Controllers\PelangganController::class)->group(function () {
         Route::get('cetakSurat/{id}', 'cetakSurat')->name('pelanggans.cetakSurat');
         Route::get('setToExpired/{id}/{user_pppoe}', 'setToExpired')->name('pelanggans.setToExpired');
@@ -216,26 +223,26 @@ Route::middleware(['auth', 'web'])->group(function () {
     Route::get('getPort/{id}', [App\Http\Controllers\OdpController::class, 'getPort'])->name('api.getPort');
     Route::get('getProfile/{id}', [App\Http\Controllers\OdpController::class, 'getProfile'])->name('api.getProfile');
     Route::get('getStatic/{id}', [App\Http\Controllers\OdpController::class, 'getStatic'])->name('api.getStatic');
-    Route::get('/pemasukans/summary', [\App\Http\Controllers\PemasukanController::class, 'summary'])->name('pemasukans.summary');
-    Route::resource('pemasukans', App\Http\Controllers\PemasukanController::class);
-    Route::get('/pengeluarans/summary', [\App\Http\Controllers\PengeluaranController::class, 'summary'])->name('pengeluarans.summary');
-    Route::resource('pengeluarans', App\Http\Controllers\PengeluaranController::class);
-    Route::get('finance-income', [App\Http\Controllers\FinanceIncomeHubController::class, 'index'])->name('finance-income.index');
-    Route::get('finance-expense', [App\Http\Controllers\FinanceExpenseHubController::class, 'index'])->name('finance-expense.index');
-    Route::get('finance-bank', [App\Http\Controllers\FinanceBankHubController::class, 'index'])->name('finance-bank.index');
-    Route::get('finance-report', [App\Http\Controllers\FinanceReportHubController::class, 'index'])->name('finance-report.index');
-    Route::get('finance-hub', [App\Http\Controllers\FinanceHubController::class, 'index'])->name('finance-hub.index');
-    Route::get('finance-setors', [App\Http\Controllers\FinanceSetorController::class, 'index'])->name('finance-setors.index');
-    Route::get('finance-setors/create', [App\Http\Controllers\FinanceSetorController::class, 'create'])->name('finance-setors.create');
-    Route::post('finance-setors', [App\Http\Controllers\FinanceSetorController::class, 'store'])->name('finance-setors.store');
-    Route::post('finance-setors/{id}/approve', [App\Http\Controllers\FinanceSetorController::class, 'approve'])->name('finance-setors.approve');
-    Route::post('finance-setors/{id}/reject', [App\Http\Controllers\FinanceSetorController::class, 'reject'])->name('finance-setors.reject');
-    Route::get('finance-setors/{id}/export-pdf', [App\Http\Controllers\FinanceSetorController::class, 'exportPdf'])->name('finance-setors.exportPdf');
+    Route::get('/pemasukans/summary', [\App\Http\Controllers\PemasukanController::class, 'summary'])->name('pemasukans.summary')->middleware('tenant.feature:finance');
+    Route::resource('pemasukans', App\Http\Controllers\PemasukanController::class)->middleware('tenant.feature:finance');
+    Route::get('/pengeluarans/summary', [\App\Http\Controllers\PengeluaranController::class, 'summary'])->name('pengeluarans.summary')->middleware('tenant.feature:finance');
+    Route::resource('pengeluarans', App\Http\Controllers\PengeluaranController::class)->middleware('tenant.feature:finance');
+    Route::get('finance-income', [App\Http\Controllers\FinanceIncomeHubController::class, 'index'])->name('finance-income.index')->middleware('tenant.feature:finance');
+    Route::get('finance-expense', [App\Http\Controllers\FinanceExpenseHubController::class, 'index'])->name('finance-expense.index')->middleware('tenant.feature:finance');
+    Route::get('finance-bank', [App\Http\Controllers\FinanceBankHubController::class, 'index'])->name('finance-bank.index')->middleware('tenant.feature:finance');
+    Route::get('finance-report', [App\Http\Controllers\FinanceReportHubController::class, 'index'])->name('finance-report.index')->middleware('tenant.feature:finance');
+    Route::get('finance-hub', [App\Http\Controllers\FinanceHubController::class, 'index'])->name('finance-hub.index')->middleware('tenant.feature:finance');
+    Route::get('finance-setors', [App\Http\Controllers\FinanceSetorController::class, 'index'])->name('finance-setors.index')->middleware('tenant.feature:finance');
+    Route::get('finance-setors/create', [App\Http\Controllers\FinanceSetorController::class, 'create'])->name('finance-setors.create')->middleware('tenant.feature:finance');
+    Route::post('finance-setors', [App\Http\Controllers\FinanceSetorController::class, 'store'])->name('finance-setors.store')->middleware('tenant.feature:finance');
+    Route::post('finance-setors/{id}/approve', [App\Http\Controllers\FinanceSetorController::class, 'approve'])->name('finance-setors.approve')->middleware('tenant.feature:finance');
+    Route::post('finance-setors/{id}/reject', [App\Http\Controllers\FinanceSetorController::class, 'reject'])->name('finance-setors.reject')->middleware('tenant.feature:finance');
+    Route::get('finance-setors/{id}/export-pdf', [App\Http\Controllers\FinanceSetorController::class, 'exportPdf'])->name('finance-setors.exportPdf')->middleware('tenant.feature:finance');
     // Summary route MUST be defined before resource to avoid conflict with 'tagihans/{tagihan}'
-    Route::get('/tagihans/summary', [App\Http\Controllers\TagihanController::class, 'summary'])->name('tagihans.summary');
-    Route::resource('tagihans', App\Http\Controllers\TagihanController::class);
+    Route::get('/tagihans/summary', [App\Http\Controllers\TagihanController::class, 'summary'])->name('tagihans.summary')->middleware('tenant.feature:finance');
+    Route::resource('tagihans', App\Http\Controllers\TagihanController::class)->middleware('tenant.feature:finance');
     Route::get('/public/tagihan', [App\Http\Controllers\TagihanController::class, 'publicTagihan'])->name('public.tagihan');
-    Route::controller(App\Http\Controllers\TagihanController::class)->group(function () {
+    Route::controller(App\Http\Controllers\TagihanController::class)->middleware('tenant.feature:finance')->group(function () {
         Route::get('invoice/{id}', 'invoice')->name('invoice.pdf');
         Route::get('invoice/print/{id}', 'invoice')->name('invoice.print');
         Route::get('invoice/escpos/{id}', 'invoiceEscpos')->name('invoice.escpos');
@@ -245,12 +252,12 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::post('/tagihans/sendWa', 'sendWa')->name('tagihans.sendWa');
         Route::get('/sendInvoice/{id}', 'sendInvoice')->name('sendInvoice');
     });
-    Route::controller(LaporanController::class)->group(function () {
+    Route::controller(LaporanController::class)->middleware('tenant.feature:finance')->group(function () {
         Route::get('/pelanggan-data', 'getPelangganData')->name('laporans.pelangganData');
         Route::get('laporans/export-pdf', 'exportPdf')->name('laporans.exportPdf');
         Route::get('laporans/export-kas', 'exportKas')->name('laporans.exportKas');
     });
-    Route::resource('laporans', App\Http\Controllers\LaporanController::class);
+    Route::resource('laporans', App\Http\Controllers\LaporanController::class)->middleware('tenant.feature:finance');
     Route::controller(AuditKeuanganController::class)->middleware('tenant.feature:audit')->group(function () {
         Route::get('/audit-keuangan', 'index')->name('audit-keuangan.index');
         Route::get('/audit-keuangan/summary-area', 'summaryArea')->name('audit-keuangan.summary-area');
@@ -302,64 +309,64 @@ Route::middleware(['auth', 'web'])->group(function () {
 });
 
 Route::middleware(['auth', 'web'])->group(function () {
-    Route::resource('users', App\Http\Controllers\UserController::class);
-    Route::resource('roles', App\Http\Controllers\RoleAndPermissionController::class);
-    Route::resource('vouchers', App\Http\Controllers\VoucherController::class);
+    Route::resource('users', App\Http\Controllers\UserController::class)->middleware('tenant.feature:settings');
+    Route::resource('roles', App\Http\Controllers\RoleAndPermissionController::class)->middleware('tenant.feature:settings');
+    Route::resource('vouchers', App\Http\Controllers\VoucherController::class)->middleware('tenant.feature:settings');
     Route::post('/pelanggans/update-generate-tagihan', [PelangganController::class, 'updateGenerateTagihan'])
         ->name('pelanggans.update_generate_tagihan');
-    Route::resource('category-pemasukans', App\Http\Controllers\CategoryPemasukanController::class)->middleware('auth');
-    Route::resource('category-pengeluarans', App\Http\Controllers\CategoryPengeluaranController::class)->middleware('auth');
+    Route::resource('category-pemasukans', App\Http\Controllers\CategoryPemasukanController::class)->middleware(['auth', 'tenant.feature:finance']);
+    Route::resource('category-pengeluarans', App\Http\Controllers\CategoryPengeluaranController::class)->middleware(['auth', 'tenant.feature:finance']);
     Route::controller(App\Http\Controllers\TagihanController::class)->group(function () {
         Route::get('invoice/{id}', 'invoice')->name('invoice.pdf');
     });
 });
 
-Route::resource('unit-satuans', App\Http\Controllers\UnitSatuanController::class)->middleware('auth');
-Route::resource('kategori-barangs', App\Http\Controllers\KategoriBarangController::class)->middleware('auth');
-Route::resource('barangs', App\Http\Controllers\BarangController::class)->middleware('auth');
+Route::resource('unit-satuans', App\Http\Controllers\UnitSatuanController::class)->middleware(['auth', 'tenant.feature:inventory']);
+Route::resource('kategori-barangs', App\Http\Controllers\KategoriBarangController::class)->middleware(['auth', 'tenant.feature:inventory']);
+Route::resource('barangs', App\Http\Controllers\BarangController::class)->middleware(['auth', 'tenant.feature:inventory']);
 Route::get('inventory-master', [App\Http\Controllers\InventoryMasterHubController::class, 'index'])
     ->name('inventory-master.index')
-    ->middleware('auth');
+    ->middleware(['auth', 'tenant.feature:inventory']);
 Route::get('inventory-transactions', [App\Http\Controllers\InventoryTransactionHubController::class, 'index'])
     ->name('inventory-transactions.index')
-    ->middleware('auth');
+    ->middleware(['auth', 'tenant.feature:inventory']);
 Route::get('inventory-hub', [App\Http\Controllers\InventoryHubController::class, 'index'])
     ->name('inventory-hub.index')
-    ->middleware('auth');
-Route::resource('setting-webs', App\Http\Controllers\SettingWebController::class)->middleware('auth');
+    ->middleware(['auth', 'tenant.feature:inventory']);
+Route::resource('setting-webs', App\Http\Controllers\SettingWebController::class)->middleware(['auth', 'tenant.feature:settings']);
 
-Route::resource('tiket-aduans', App\Http\Controllers\TiketAduanController::class)->middleware('auth');
+Route::resource('tiket-aduans', App\Http\Controllers\TiketAduanController::class)->middleware(['auth', 'tenant.feature:cms']);
 
-Route::resource('config-pesan-notifs', App\Http\Controllers\ConfigPesanNotifController::class)->middleware('auth');
-Route::resource('banner-managements', App\Http\Controllers\BannerManagementController::class)->middleware('auth');
-Route::resource('informasi-managements', App\Http\Controllers\InformasiManagementController::class)->middleware('auth');
-Route::resource('balance-histories', App\Http\Controllers\BalanceHistoryController::class)->only(['index']);
+Route::resource('config-pesan-notifs', App\Http\Controllers\ConfigPesanNotifController::class)->middleware(['auth', 'tenant.feature:whatsapp']);
+Route::resource('banner-managements', App\Http\Controllers\BannerManagementController::class)->middleware(['auth', 'tenant.feature:cms']);
+Route::resource('informasi-managements', App\Http\Controllers\InformasiManagementController::class)->middleware(['auth', 'tenant.feature:cms']);
+Route::resource('balance-histories', App\Http\Controllers\BalanceHistoryController::class)->only(['index'])->middleware(['auth', 'tenant.feature:investor']);
 
-Route::resource('withdraws', App\Http\Controllers\WithdrawController::class);
+Route::resource('withdraws', App\Http\Controllers\WithdrawController::class)->middleware('tenant.feature:investor');
 Route::post('withdraws/{withdraw}/approve', [App\Http\Controllers\WithdrawController::class, 'approve'])->name('withdraws.approve');
 
-Route::resource('topups', App\Http\Controllers\TopupController::class)->middleware('auth');
+Route::resource('topups', App\Http\Controllers\TopupController::class)->middleware(['auth', 'tenant.feature:finance']);
 Route::post('topups/approve', [App\Http\Controllers\TopupController::class, 'approve'])->name('topups.approve')->middleware('auth');
 
 Route::resource('olts', App\Http\Controllers\OltController::class)->middleware(['auth', 'tenant.feature:olt']);
 
 Route::get('/investor', [App\Http\Controllers\InvestorController::class, 'index'])
     ->name('investor.index')
-    ->middleware(['auth', 'permission:investor view']);
+    ->middleware(['auth', 'permission:investor view', 'tenant.feature:investor']);
 
 Route::get('/investor-admin', [App\Http\Controllers\InvestorAdminDashboardController::class, 'index'])
     ->name('investor-admin.index')
-    ->middleware(['auth', 'permission:investor rule manage']);
+    ->middleware(['auth', 'permission:investor rule manage', 'tenant.feature:investor']);
 Route::get('/investor-inventory', [App\Http\Controllers\InvestorInventoryController::class, 'index'])
     ->name('investor-inventory.index')
-    ->middleware(['auth', 'permission:investor view']);
+    ->middleware(['auth', 'permission:investor view', 'tenant.feature:investor']);
 
 Route::get('/mikrotik-automation', [App\Http\Controllers\MikrotikAutomationController::class, 'index'])
     ->name('mikrotik-automation.index')
-    ->middleware(['auth', 'permission:mikrotik automation view']);
+    ->middleware(['auth', 'permission:mikrotik automation view', 'tenant.feature:network']);
 Route::post('/mikrotik-automation/settings', [App\Http\Controllers\MikrotikAutomationController::class, 'saveSettings'])
     ->name('mikrotik-automation.settings')
-    ->middleware(['auth', 'permission:mikrotik automation manage']);
+    ->middleware(['auth', 'permission:mikrotik automation manage', 'tenant.feature:network']);
 Route::post('/mikrotik-automation/run-now', [App\Http\Controllers\MikrotikAutomationController::class, 'runNow'])
     ->name('mikrotik-automation.run-now')
     ->middleware(['auth', 'permission:mikrotik automation execute']);

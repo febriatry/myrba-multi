@@ -154,17 +154,39 @@
                             @endif
                         </ul>
                     </li>
+                @endif
+                @if (! $isPlatformOwner)
                     @foreach (config('generator.sidebars') as $sidebar)
                         @if (isset($sidebar['permissions']))
                             @canany($sidebar['permissions'])
                                 @foreach ($sidebar['menus'] as $menu)
                                     @php
+                                        $routeFeatureMap = [
+                                            '/finance-hub' => 'finance',
+                                            '/pelanggan-hub' => 'pelanggan',
+                                            '/layanan-hub' => 'layanan',
+                                            '/hr-hub' => 'hr',
+                                            '/inventory-hub' => 'inventory',
+                                            '/network-hub' => 'network',
+                                            '/pppoe-hub' => 'pppoe',
+                                            '/hotspot-hub' => 'hotspot',
+                                            '/investor-hub' => 'investor',
+                                            '/cms-hub' => 'cms',
+                                            '/settings-hub' => 'settings',
+                                        ];
                                         $permissions = empty($menu['permission'])
                                             ? $menu['permissions']
                                             : [$menu['permission']];
+                                        $menuRoute = (string) ($menu['route'] ?? '');
+                                        $featureKey = $menuRoute !== '' && isset($routeFeatureMap[$menuRoute]) ? $routeFeatureMap[$menuRoute] : null;
+                                        $featureEnabled = true;
+                                        if ($featureKey !== null) {
+                                            $featureEnabled = \App\Services\TenantEntitlementService::featureEnabled((string) $featureKey, true);
+                                        }
                                     @endphp
 
-                                    @canany($permissions)
+                                    @if ($featureEnabled)
+                                        @canany($permissions)
                                         @if (empty($menu['submenus']))
                                             <li class="sidebar-item{{ is_active_menu($menu['route']) }}">
                                                 <a href="{{ route(str($menu['route'])->remove('/') . '.index') }}"
@@ -207,7 +229,8 @@
                                                 </ul>
                                             </li>
                                         @endif
-                                    @endcanany
+                                        @endcanany
+                                    @endif
                                 @endforeach
                             @endcanany
                         @endif

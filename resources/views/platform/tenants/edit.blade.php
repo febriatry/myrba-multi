@@ -39,6 +39,15 @@
                 @php
                     $features = is_array($tenant->features_json) ? $tenant->features_json : [];
                     $quota = is_array($tenant->quota_json) ? $tenant->quota_json : [];
+                    $owFinance = array_key_exists('finance', $features) ? ($features['finance'] ? '1' : '0') : '';
+                    $owPelanggan = array_key_exists('pelanggan', $features) ? ($features['pelanggan'] ? '1' : '0') : '';
+                    $owLayanan = array_key_exists('layanan', $features) ? ($features['layanan'] ? '1' : '0') : '';
+                    $owNetwork = array_key_exists('network', $features) ? ($features['network'] ? '1' : '0') : '';
+                    $owPppoe = array_key_exists('pppoe', $features) ? ($features['pppoe'] ? '1' : '0') : '';
+                    $owHotspot = array_key_exists('hotspot', $features) ? ($features['hotspot'] ? '1' : '0') : '';
+                    $owInvestor = array_key_exists('investor', $features) ? ($features['investor'] ? '1' : '0') : '';
+                    $owCms = array_key_exists('cms', $features) ? ($features['cms'] ? '1' : '0') : '';
+                    $owSettings = array_key_exists('settings', $features) ? ($features['settings'] ? '1' : '0') : '';
                     $owWhatsapp = array_key_exists('whatsapp', $features) ? ($features['whatsapp'] ? '1' : '0') : '';
                     $owPayment = array_key_exists('payment_gateway', $features) ? ($features['payment_gateway'] ? '1' : '0') : '';
                     $owInventory = array_key_exists('inventory', $features) ? ($features['inventory'] ? '1' : '0') : '';
@@ -51,6 +60,78 @@
                 </div>
                 <div class="col-12">
                     <div class="fw-bold mb-2">Override Fitur (opsional)</div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Keuangan</label>
+                    <select name="override_feature_finance" class="form-select">
+                        <option value="" @selected((string) old('override_feature_finance', $owFinance) === '')>Inherit</option>
+                        <option value="1" @selected((string) old('override_feature_finance', $owFinance) === '1')>On</option>
+                        <option value="0" @selected((string) old('override_feature_finance', $owFinance) === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Pelanggan</label>
+                    <select name="override_feature_pelanggan" class="form-select">
+                        <option value="" @selected((string) old('override_feature_pelanggan', $owPelanggan) === '')>Inherit</option>
+                        <option value="1" @selected((string) old('override_feature_pelanggan', $owPelanggan) === '1')>On</option>
+                        <option value="0" @selected((string) old('override_feature_pelanggan', $owPelanggan) === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Kelola Layanan</label>
+                    <select name="override_feature_layanan" class="form-select">
+                        <option value="" @selected((string) old('override_feature_layanan', $owLayanan) === '')>Inherit</option>
+                        <option value="1" @selected((string) old('override_feature_layanan', $owLayanan) === '1')>On</option>
+                        <option value="0" @selected((string) old('override_feature_layanan', $owLayanan) === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Network Ops</label>
+                    <select name="override_feature_network" class="form-select">
+                        <option value="" @selected((string) old('override_feature_network', $owNetwork) === '')>Inherit</option>
+                        <option value="1" @selected((string) old('override_feature_network', $owNetwork) === '1')>On</option>
+                        <option value="0" @selected((string) old('override_feature_network', $owNetwork) === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">PPPoE</label>
+                    <select name="override_feature_pppoe" class="form-select">
+                        <option value="" @selected((string) old('override_feature_pppoe', $owPppoe) === '')>Inherit</option>
+                        <option value="1" @selected((string) old('override_feature_pppoe', $owPppoe) === '1')>On</option>
+                        <option value="0" @selected((string) old('override_feature_pppoe', $owPppoe) === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Hotspot</label>
+                    <select name="override_feature_hotspot" class="form-select">
+                        <option value="" @selected((string) old('override_feature_hotspot', $owHotspot) === '')>Inherit</option>
+                        <option value="1" @selected((string) old('override_feature_hotspot', $owHotspot) === '1')>On</option>
+                        <option value="0" @selected((string) old('override_feature_hotspot', $owHotspot) === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Investor</label>
+                    <select name="override_feature_investor" class="form-select">
+                        <option value="" @selected((string) old('override_feature_investor', $owInvestor) === '')>Inherit</option>
+                        <option value="1" @selected((string) old('override_feature_investor', $owInvestor) === '1')>On</option>
+                        <option value="0" @selected((string) old('override_feature_investor', $owInvestor) === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">CMS</label>
+                    <select name="override_feature_cms" class="form-select">
+                        <option value="" @selected((string) old('override_feature_cms', $owCms) === '')>Inherit</option>
+                        <option value="1" @selected((string) old('override_feature_cms', $owCms) === '1')>On</option>
+                        <option value="0" @selected((string) old('override_feature_cms', $owCms) === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Settings</label>
+                    <select name="override_feature_settings" class="form-select">
+                        <option value="" @selected((string) old('override_feature_settings', $owSettings) === '')>Inherit</option>
+                        <option value="1" @selected((string) old('override_feature_settings', $owSettings) === '1')>On</option>
+                        <option value="0" @selected((string) old('override_feature_settings', $owSettings) === '0')>Off</option>
+                    </select>
                 </div>
                 <div class="col-12 col-md-3">
                     <label class="form-label">WhatsApp</label>

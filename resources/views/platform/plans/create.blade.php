@@ -34,31 +34,94 @@
                     <div class="fw-bold mb-2">Fitur</div>
                 </div>
                 <div class="col-12 col-md-3">
+                    <label class="form-label">Keuangan</label>
+                    <select name="feature_finance" class="form-select">
+                        <option value="1" @selected(old('feature_finance', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_finance', '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Pelanggan</label>
+                    <select name="feature_pelanggan" class="form-select">
+                        <option value="1" @selected(old('feature_pelanggan', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_pelanggan', '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Kelola Layanan</label>
+                    <select name="feature_layanan" class="form-select">
+                        <option value="1" @selected(old('feature_layanan', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_layanan', '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Network Ops</label>
+                    <select name="feature_network" class="form-select">
+                        <option value="1" @selected(old('feature_network', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_network', '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">PPPoE</label>
+                    <select name="feature_pppoe" class="form-select">
+                        <option value="1" @selected(old('feature_pppoe', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_pppoe', '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Hotspot</label>
+                    <select name="feature_hotspot" class="form-select">
+                        <option value="1" @selected(old('feature_hotspot', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_hotspot', '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Investor</label>
+                    <select name="feature_investor" class="form-select">
+                        <option value="1" @selected(old('feature_investor', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_investor', '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">CMS</label>
+                    <select name="feature_cms" class="form-select">
+                        <option value="1" @selected(old('feature_cms', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_cms', '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Settings</label>
+                    <select name="feature_settings" class="form-select">
+                        <option value="1" @selected(old('feature_settings', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_settings', '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
                     <label class="form-label">WhatsApp</label>
                     <select name="feature_whatsapp" class="form-select">
-                        <option value="1" @selected(old('feature_whatsapp', '0') === '1')>On</option>
-                        <option value="0" @selected(old('feature_whatsapp', '0') === '0')>Off</option>
+                        <option value="1" @selected(old('feature_whatsapp', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_whatsapp', '1') === '0')>Off</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-3">
                     <label class="form-label">Payment Gateway</label>
                     <select name="feature_payment_gateway" class="form-select">
-                        <option value="1" @selected(old('feature_payment_gateway', '0') === '1')>On</option>
-                        <option value="0" @selected(old('feature_payment_gateway', '0') === '0')>Off</option>
+                        <option value="1" @selected(old('feature_payment_gateway', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_payment_gateway', '1') === '0')>Off</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-3">
                     <label class="form-label">Inventory</label>
                     <select name="feature_inventory" class="form-select">
-                        <option value="1" @selected(old('feature_inventory', '0') === '1')>On</option>
-                        <option value="0" @selected(old('feature_inventory', '0') === '0')>Off</option>
+                        <option value="1" @selected(old('feature_inventory', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_inventory', '1') === '0')>Off</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-3">
                     <label class="form-label">HR</label>
                     <select name="feature_hr" class="form-select">
-                        <option value="1" @selected(old('feature_hr', '0') === '1')>On</option>
-                        <option value="0" @selected(old('feature_hr', '0') === '0')>Off</option>
+                        <option value="1" @selected(old('feature_hr', '1') === '1')>On</option>
+                        <option value="0" @selected(old('feature_hr', '1') === '0')>Off</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-3">

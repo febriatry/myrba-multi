@@ -11,6 +11,15 @@ class EnsureTenantFeature
     public function handle(Request $request, Closure $next, string $featureKey)
     {
         $labels = [
+            'finance' => 'Keuangan',
+            'pelanggan' => 'Pelanggan',
+            'layanan' => 'Kelola Layanan',
+            'network' => 'Network Ops',
+            'pppoe' => 'PPPoE',
+            'hotspot' => 'Hotspot',
+            'investor' => 'Investor',
+            'cms' => 'CMS',
+            'settings' => 'Settings',
             'whatsapp' => 'WhatsApp',
             'payment_gateway' => 'Payment Gateway',
             'inventory' => 'Inventory',
@@ -20,8 +29,7 @@ class EnsureTenantFeature
         ];
         $label = $labels[$featureKey] ?? $featureKey;
 
-        $defaultEnabled = in_array($featureKey, ['olt', 'audit'], true);
-        TenantEntitlementService::ensureFeature($featureKey, $label, $defaultEnabled);
+        TenantEntitlementService::ensureFeature($featureKey, $label, true);
 
         return $next($request);
     }

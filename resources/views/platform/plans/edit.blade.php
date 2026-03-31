@@ -40,31 +40,94 @@
                     <div class="fw-bold mb-2">Fitur</div>
                 </div>
                 <div class="col-12 col-md-3">
+                    <label class="form-label">Keuangan</label>
+                    <select name="feature_finance" class="form-select">
+                        <option value="1" @selected((string) old('feature_finance', isset($features['finance']) ? ($features['finance'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_finance', isset($features['finance']) ? ($features['finance'] ? '1' : '0') : '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Pelanggan</label>
+                    <select name="feature_pelanggan" class="form-select">
+                        <option value="1" @selected((string) old('feature_pelanggan', isset($features['pelanggan']) ? ($features['pelanggan'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_pelanggan', isset($features['pelanggan']) ? ($features['pelanggan'] ? '1' : '0') : '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Kelola Layanan</label>
+                    <select name="feature_layanan" class="form-select">
+                        <option value="1" @selected((string) old('feature_layanan', isset($features['layanan']) ? ($features['layanan'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_layanan', isset($features['layanan']) ? ($features['layanan'] ? '1' : '0') : '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Network Ops</label>
+                    <select name="feature_network" class="form-select">
+                        <option value="1" @selected((string) old('feature_network', isset($features['network']) ? ($features['network'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_network', isset($features['network']) ? ($features['network'] ? '1' : '0') : '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">PPPoE</label>
+                    <select name="feature_pppoe" class="form-select">
+                        <option value="1" @selected((string) old('feature_pppoe', isset($features['pppoe']) ? ($features['pppoe'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_pppoe', isset($features['pppoe']) ? ($features['pppoe'] ? '1' : '0') : '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Hotspot</label>
+                    <select name="feature_hotspot" class="form-select">
+                        <option value="1" @selected((string) old('feature_hotspot', isset($features['hotspot']) ? ($features['hotspot'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_hotspot', isset($features['hotspot']) ? ($features['hotspot'] ? '1' : '0') : '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Investor</label>
+                    <select name="feature_investor" class="form-select">
+                        <option value="1" @selected((string) old('feature_investor', isset($features['investor']) ? ($features['investor'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_investor', isset($features['investor']) ? ($features['investor'] ? '1' : '0') : '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">CMS</label>
+                    <select name="feature_cms" class="form-select">
+                        <option value="1" @selected((string) old('feature_cms', isset($features['cms']) ? ($features['cms'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_cms', isset($features['cms']) ? ($features['cms'] ? '1' : '0') : '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Settings</label>
+                    <select name="feature_settings" class="form-select">
+                        <option value="1" @selected((string) old('feature_settings', isset($features['settings']) ? ($features['settings'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_settings', isset($features['settings']) ? ($features['settings'] ? '1' : '0') : '1') === '0')>Off</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
                     <label class="form-label">WhatsApp</label>
                     <select name="feature_whatsapp" class="form-select">
-                        <option value="1" @selected((string) old('feature_whatsapp', isset($features['whatsapp']) && $features['whatsapp'] ? '1' : '0') === '1')>On</option>
-                        <option value="0" @selected((string) old('feature_whatsapp', isset($features['whatsapp']) && $features['whatsapp'] ? '1' : '0') === '0')>Off</option>
+                        <option value="1" @selected((string) old('feature_whatsapp', isset($features['whatsapp']) ? ($features['whatsapp'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_whatsapp', isset($features['whatsapp']) ? ($features['whatsapp'] ? '1' : '0') : '1') === '0')>Off</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-3">
                     <label class="form-label">Payment Gateway</label>
                     <select name="feature_payment_gateway" class="form-select">
-                        <option value="1" @selected((string) old('feature_payment_gateway', isset($features['payment_gateway']) && $features['payment_gateway'] ? '1' : '0') === '1')>On</option>
-                        <option value="0" @selected((string) old('feature_payment_gateway', isset($features['payment_gateway']) && $features['payment_gateway'] ? '1' : '0') === '0')>Off</option>
+                        <option value="1" @selected((string) old('feature_payment_gateway', isset($features['payment_gateway']) ? ($features['payment_gateway'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_payment_gateway', isset($features['payment_gateway']) ? ($features['payment_gateway'] ? '1' : '0') : '1') === '0')>Off</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-3">
                     <label class="form-label">Inventory</label>
                     <select name="feature_inventory" class="form-select">
-                        <option value="1" @selected((string) old('feature_inventory', isset($features['inventory']) && $features['inventory'] ? '1' : '0') === '1')>On</option>
-                        <option value="0" @selected((string) old('feature_inventory', isset($features['inventory']) && $features['inventory'] ? '1' : '0') === '0')>Off</option>
+                        <option value="1" @selected((string) old('feature_inventory', isset($features['inventory']) ? ($features['inventory'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_inventory', isset($features['inventory']) ? ($features['inventory'] ? '1' : '0') : '1') === '0')>Off</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-3">
                     <label class="form-label">HR</label>
                     <select name="feature_hr" class="form-select">
-                        <option value="1" @selected((string) old('feature_hr', isset($features['hr']) && $features['hr'] ? '1' : '0') === '1')>On</option>
-                        <option value="0" @selected((string) old('feature_hr', isset($features['hr']) && $features['hr'] ? '1' : '0') === '0')>Off</option>
+                        <option value="1" @selected((string) old('feature_hr', isset($features['hr']) ? ($features['hr'] ? '1' : '0') : '1') === '1')>On</option>
+                        <option value="0" @selected((string) old('feature_hr', isset($features['hr']) ? ($features['hr'] ? '1' : '0') : '1') === '0')>Off</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-3">
