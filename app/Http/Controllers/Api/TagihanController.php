@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\SettingWeb;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\SettingWeb;
 use Illuminate\Support\Facades\Http;
-use \RouterOS\Query;
-use \RouterOS\Client;
-use \RouterOS\Exceptions\ConnectException;
-
+use RouterOS\Client;
+use RouterOS\Exceptions\ConnectException;
+use RouterOS\Query;
 
 class TagihanController extends Controller
 {
@@ -23,7 +22,7 @@ class TagihanController extends Controller
         }
 
         $tagihan = DB::table('tagihans')->where('id', $id)->first();
-        if (!$tagihan) {
+        if (! $tagihan) {
             return apiResponse(false, 'Tagihan tidak ditemukan', [], 404);
         }
 
@@ -94,24 +93,24 @@ class TagihanController extends Controller
 
         try {
             $settingWeb = SettingWeb::first();
-            $url = $settingWeb->url_tripay . 'merchant/payment-channel';
+            $url = $settingWeb->url_tripay.'merchant/payment-channel';
             $api_key = $settingWeb->api_key_tripay;
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $api_key
+                'Authorization' => 'Bearer '.$api_key,
             ])->get($url);
 
             $result = json_decode($response->getBody());
 
             if ($result->success == true) {
                 return apiResponse(true, 'Metode pembayaran berhasil diambil', [
-                    'payment_methods' => $result->data
+                    'payment_methods' => $result->data,
                 ]);
             } else {
                 return apiResponse(false, $result->message ?? 'Gagal mengambil metode pembayaran', [], 400);
             }
         } catch (\Exception $e) {
-            return apiResponse(false, 'Terjadi kesalahan: ' . $e->getMessage(), [], 500);
+            return apiResponse(false, 'Terjadi kesalahan: '.$e->getMessage(), [], 500);
         }
     }
 
@@ -154,7 +153,7 @@ class TagihanController extends Controller
                 )
                 ->first();
 
-            if (!$tagihan) {
+            if (! $tagihan) {
                 return apiResponse(false, 'Tagihan tidak ditemukan atau sudah dibayar', [], 404);
             }
 
@@ -170,7 +169,7 @@ class TagihanController extends Controller
                     'status_bayar' => 'Sudah Bayar',
                     'metode_bayar' => 'Saldo',
                     'tanggal_bayar' => now(),
-                    'tanggal_kirim_notif_wa' => now()
+                    'tanggal_kirim_notif_wa' => now(),
                 ]);
 
             // Insert income record
@@ -179,9 +178,9 @@ class TagihanController extends Controller
                 'nominal' => $tagihan->total_bayar,
                 'tanggal' => now(),
                 'category_pemasukan_id' => $categoryId,
-                'referense_id' =>$tagihanId,
+                'referense_id' => $tagihanId,
                 'metode_bayar' => 'Saldo',
-                'keterangan' => 'Pembayaran Tagihan no Tagihan ' . $tagihan->no_tagihan . ' a/n ' . $tagihan->nama_pelanggan . ' Periode ' . $tagihan->periode,
+                'keterangan' => 'Pembayaran Tagihan no Tagihan '.$tagihan->no_tagihan.' a/n '.$tagihan->nama_pelanggan.' Periode '.$tagihan->periode,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -199,7 +198,7 @@ class TagihanController extends Controller
                 'amount' => $tagihan->total_bayar,
                 'balance_before' => $tagihan->balance,
                 'balance_after' => $newBalance,
-                'description' => 'Pembayaran Tagihan #' . $tagihan->no_tagihan,
+                'description' => 'Pembayaran Tagihan #'.$tagihan->no_tagihan,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -225,7 +224,7 @@ class TagihanController extends Controller
                         ->where('name', $tagihan->user_pppoe);
                     $data = $client->query($queryGet)->read();
 
-                    if (!empty($data)) {
+                    if (! empty($data)) {
                         $idSecret = $data[0]['.id'];
                         $existingComment = $data[0]['comment'] ?? null;
                         $comment = myrbaMergeMikrotikComment($existingComment, 'Isolir terbuka otomatis (lunas)');
@@ -240,7 +239,7 @@ class TagihanController extends Controller
                         $queryGet = (new Query('/ppp/active/print'))
                             ->where('name', $tagihan->user_pppoe);
                         $data = $client->query($queryGet)->read();
-                        if (!empty($data)) {
+                        if (! empty($data)) {
                             $idActive = $data[0]['.id'];
                             $queryDelete = (new Query('/ppp/active/remove'))
                                 ->equal('.id', $idActive);
@@ -252,7 +251,7 @@ class TagihanController extends Controller
                         ->where('name', $tagihan->user_static);
                     $data = $client->query($queryGet)->read();
 
-                    if (!empty($data) && isset($data[0]['target'])) {
+                    if (! empty($data) && isset($data[0]['target'])) {
                         $ip = $data[0]['target'];
                         $parts = explode('/', $ip);
                         $fixIp = $parts[0];
@@ -262,7 +261,7 @@ class TagihanController extends Controller
                             ->where('address', $fixIp);
                         $data = $client->query($queryGet)->read();
 
-                        if (!empty($data) && isset($data[0]['.id'])) {
+                        if (! empty($data) && isset($data[0]['.id'])) {
                             $idIP = $data[0]['.id'];
                             $queryRemove = (new Query('/ip/firewall/address-list/remove'))
                                 ->equal('.id', $idIP);
@@ -289,16 +288,17 @@ class TagihanController extends Controller
                 'tagihan_id' => $tagihanId,
                 'saldo_sebelumnya' => $tagihan->balance,
                 'saldo_sekarang' => $newBalance,
-                'nominal_tagihan' => $tagihan->total_bayar
+                'nominal_tagihan' => $tagihan->total_bayar,
             ]);
         } catch (\Exception $e) {
             // Rollback transaction on error
             DB::rollBack();
-            return apiResponse(false, 'Terjadi kesalahan: ' . $e->getMessage(), [], 500);
+
+            return apiResponse(false, 'Terjadi kesalahan: '.$e->getMessage(), [], 500);
         }
     }
 
-    function setRoute($id)
+    public function setRoute($id)
     {
         $router = DB::table('settingmikrotiks')->where('id', $id)->first();
         if ($router) {
@@ -310,8 +310,8 @@ class TagihanController extends Controller
                     'port' => (int) $router->port,
                 ]);
             } catch (ConnectException $e) {
-                echo $e->getMessage() . PHP_EOL;
-                die();
+                echo $e->getMessage().PHP_EOL;
+                exit();
             }
         }
     }
@@ -326,7 +326,7 @@ class TagihanController extends Controller
 
         // Validate method code exists in request
         $methodCode = $request->input('method_code');
-        if (!$methodCode) {
+        if (! $methodCode) {
             return apiResponse(false, 'Metode pembayaran harus dipilih', [], 400);
         }
 
@@ -345,83 +345,97 @@ class TagihanController extends Controller
             ->where('tagihans.status_bayar', 'Belum Bayar')
             ->first();
 
-        if (!$tagihan) {
+        if (! $tagihan) {
             return apiResponse(false, 'Tagihan tidak ditemukan atau sudah dibayar', [], 404);
         }
 
         // Get Tripay settings
-        $settingWeb = SettingWeb::first();
-        $apiKey = $settingWeb->api_key_tripay;
-        $privateKey = $settingWeb->private_key;
-        $merchantCode = $settingWeb->kode_merchant;
+        $tenantId = resolveTenantIdFromTagihanId((int) $tagihanId);
+        $tripay = resolveTripayConfigForTenantId((int) $tenantId);
+        if (! $tripay) {
+            return apiResponse(false, 'Tripay belum dikonfigurasi untuk tenant ini.', [], 400);
+        }
+        $apiKey = $tripay['api_key'];
+        $privateKey = $tripay['private_key'];
+        $merchantCode = $tripay['merchant_code'];
         $merchantRef = $tagihan->no_tagihan;
         $amount = $tagihan->total_bayar;
 
         // Prepare data for Tripay
         $data = [
-            'method'         => $methodCode,
-            'merchant_ref'   => $merchantRef,
-            'amount'         => $amount,
-            'customer_name'  => $tagihan->nama,
+            'method' => $methodCode,
+            'merchant_ref' => $merchantRef,
+            'amount' => $amount,
+            'customer_name' => $tagihan->nama,
             'customer_email' => $tagihan->email_customer,
             'customer_phone' => $tagihan->no_wa,
-            'order_items'    => [
+            'order_items' => [
                 [
-                    'sku'         => 'Internet-' . $tagihan->no_layanan,
-                    'name'        => 'Pembayaran Internet',
-                    'price'       => $amount,
-                    'quantity'    => 1,
+                    'sku' => 'Internet-'.$tagihan->no_layanan,
+                    'name' => 'Pembayaran Internet',
+                    'price' => $amount,
+                    'quantity' => 1,
                     'product_url' => '',
-                    'image_url'   => '',
-                ]
+                    'image_url' => '',
+                ],
             ],
             'expired_time' => (time() + (24 * 60 * 60)), // 24 hours expiry
-            'signature'    => hash_hmac('sha256', $merchantCode . $merchantRef . $amount, $privateKey)
+            'signature' => hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey),
         ];
 
         try {
             // Create transaction in Tripay
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey
-            ])->post($settingWeb->url_tripay . 'transaction/create', $data);
+                'Authorization' => 'Bearer '.$apiKey,
+            ])->post($tripay['base_url'].'transaction/create', $data);
 
             $result = $response->json();
 
-            if (!$result['success']) {
+            if (! $result['success']) {
                 return apiResponse(false, $result['message'] ?? 'Gagal membuat transaksi pembayaran', [], 400);
             }
 
             $transaction = $result['data'];
+            if (($tripay['gateway_mode'] ?? 'owner') === 'owner') {
+                recordTripayUsageLog((int) $tenantId, (string) $merchantRef, [
+                    'gateway_mode' => 'owner',
+                    'type' => 'tagihan',
+                    'status' => 'CREATED',
+                    'amount' => (int) $amount,
+                    'method' => (string) $methodCode,
+                    'tripay_reference' => is_array($transaction) ? ($transaction['reference'] ?? null) : null,
+                ]);
+            }
 
             // For e-wallets, just return the checkout URL
-            if (empty($transaction['pay_code']) && !empty($transaction['checkout_url'])) {
+            if (empty($transaction['pay_code']) && ! empty($transaction['checkout_url'])) {
                 return apiResponse(true, 'Silakan selesaikan pembayaran', [
                     'payment_type' => 'ewallet',
                     'checkout_url' => $transaction['checkout_url'],
                     'payment_url' => $transaction['payment_url'] ?? null,
-                    'reference' => $transaction['reference']
+                    'reference' => $transaction['reference'],
                 ]);
             }
 
             // For non-ewallets, get full payment instructions
             $detailResponse = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey
-            ])->get($settingWeb->url_tripay . 'transaction/detail', [
-                'reference' => $transaction['reference']
+                'Authorization' => 'Bearer '.$apiKey,
+            ])->get($tripay['base_url'].'transaction/detail', [
+                'reference' => $transaction['reference'],
             ]);
 
             $detailResult = $detailResponse->json();
 
-            if (!$detailResult['success']) {
+            if (! $detailResult['success']) {
                 return apiResponse(false, $detailResult['message'] ?? 'Gagal mendapatkan detail pembayaran', [], 400);
             }
 
             return apiResponse(true, 'Instruksi pembayaran berhasil didapatkan', [
                 'payment_type' => 'virtual_account',
-                'payment_data' => $detailResult['data']
+                'payment_data' => $detailResult['data'],
             ]);
         } catch (\Exception $e) {
-            return apiResponse(false, 'Terjadi kesalahan: ' . $e->getMessage(), [], 500);
+            return apiResponse(false, 'Terjadi kesalahan: '.$e->getMessage(), [], 500);
         }
     }
 
@@ -437,7 +451,7 @@ class TagihanController extends Controller
         $query = $request->input('query');
         $limit = $request->input('limit', 5);
 
-        if (!$pelangganId || !$query) {
+        if (! $pelangganId || ! $query) {
             return apiResponse(false, 'Parameter pencarian tidak valid', [], 400);
         }
 

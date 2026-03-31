@@ -28,23 +28,25 @@ class TenantWaController extends Controller
         $tenant = Tenant::query()->findOrFail($tenantId);
 
         $validated = $request->validate([
-            'wa_provider_mode' => 'required|in:developer,tenant',
+            'wa_provider_mode' => 'required|in:app,manual,owner,tenant,developer',
             'wa_ivosight_base_url' => 'nullable|string|max:255',
             'wa_ivosight_api_key' => 'nullable|string|max:255',
             'wa_ivosight_sender_id' => 'nullable|string|max:100',
         ]);
 
-        if ($validated['wa_provider_mode'] === 'tenant') {
+        $mode = (string) $validated['wa_provider_mode'];
+        if (in_array($mode, ['manual', 'tenant'], true)) {
             if (trim((string) ($validated['wa_ivosight_base_url'] ?? '')) === '' || trim((string) ($validated['wa_ivosight_api_key'] ?? '')) === '') {
                 return redirect()->back()->withInput()->with('error', 'Base URL dan API Key wajib diisi jika memilih API sendiri.');
             }
         }
 
+        $normalizedMode = in_array($mode, ['manual', 'tenant'], true) ? 'tenant' : 'owner';
         $tenant->update([
-            'wa_provider_mode' => $validated['wa_provider_mode'],
-            'wa_ivosight_base_url' => $validated['wa_provider_mode'] === 'tenant' ? trim((string) ($validated['wa_ivosight_base_url'] ?? '')) : null,
-            'wa_ivosight_api_key' => $validated['wa_provider_mode'] === 'tenant' ? trim((string) ($validated['wa_ivosight_api_key'] ?? '')) : null,
-            'wa_ivosight_sender_id' => $validated['wa_provider_mode'] === 'tenant' ? trim((string) ($validated['wa_ivosight_sender_id'] ?? '')) : null,
+            'wa_provider_mode' => $normalizedMode,
+            'wa_ivosight_base_url' => $normalizedMode === 'tenant' ? trim((string) ($validated['wa_ivosight_base_url'] ?? '')) : null,
+            'wa_ivosight_api_key' => $normalizedMode === 'tenant' ? trim((string) ($validated['wa_ivosight_api_key'] ?? '')) : null,
+            'wa_ivosight_sender_id' => $normalizedMode === 'tenant' ? trim((string) ($validated['wa_ivosight_sender_id'] ?? '')) : null,
         ]);
 
         return redirect()->route('tenant.wa.settings')->with('success', 'Pengaturan WhatsApp tenant berhasil disimpan.');
@@ -54,12 +56,12 @@ class TenantWaController extends Controller
     {
         $tenantId = (int) (auth()->user()->tenant_id ?? 0);
         $month = trim((string) $request->query('month', now()->format('Y-m')));
-        if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+        if (! preg_match('/^\d{4}-\d{2}$/', $month)) {
             $month = now()->format('Y-m');
         }
 
-        $start = $month . '-01 00:00:00';
-        $end = date('Y-m-t', strtotime($start)) . ' 23:59:59';
+        $start = $month.'-01 00:00:00';
+        $end = date('Y-m-t', strtotime($start)).' 23:59:59';
 
         $base = WaMessageStatusLog::query()
             ->where('tenant_id', $tenantId)
@@ -87,4 +89,3 @@ class TenantWaController extends Controller
         return view('tenant.wa-report', compact('month', 'total', 'byType', 'price', 'estimatedTotal'));
     }
 }
-

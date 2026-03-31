@@ -38,6 +38,14 @@
                     <div class="text-muted">Total Tagihan</div>
                     <div class="fs-3 fw-bold">{{ rupiah((float) ($waOwnerTotalAmount ?? 0)) }}</div>
                 </div>
+                <div>
+                    <div class="text-muted">Tripay Paid</div>
+                    <div class="fs-3 fw-bold">{{ (int) ($tripayPaidTotal ?? 0) }}</div>
+                </div>
+                <div>
+                    <div class="text-muted">Tripay Nominal</div>
+                    <div class="fs-3 fw-bold">{{ rupiah((float) ($tripayPaidAmount ?? 0)) }}</div>
+                </div>
             </div>
         </div>
 
@@ -80,6 +88,69 @@
                 </div>
             </div>
         </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">Tripay Owner ({{ $month }})</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-6">
+                        <div class="table-responsive">
+                            <table class="table table-striped align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Paket</th>
+                                        <th class="text-end">Tenant</th>
+                                        <th class="text-end">Paid</th>
+                                        <th class="text-end">Nominal Paid</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse (($tripayPlanRows ?? []) as $r)
+                                        <tr>
+                                            <td class="fw-bold">{{ $r['plan_name'] ?? '-' }}</td>
+                                            <td class="text-end">{{ (int) ($r['tenant_count'] ?? 0) }}</td>
+                                            <td class="text-end">{{ (int) ($r['paid_total'] ?? 0) }}</td>
+                                            <td class="text-end fw-bold">{{ rupiah((float) ($r['paid_amount'] ?? 0)) }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted">Tidak ada data</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="table-responsive">
+                            <table class="table table-striped align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Tenant</th>
+                                        <th class="text-end">Paid</th>
+                                        <th class="text-end">Nominal Paid</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse (($tripayByTenant ?? []) as $r)
+                                        <tr>
+                                            <td class="fw-bold">{{ $r->tenant_code ?? ('Tenant #' . (int) $r->tenant_id) }}</td>
+                                            <td class="text-end">{{ (int) ($r->paid_total ?? 0) }}</td>
+                                            <td class="text-end fw-bold">{{ rupiah((float) ($r->paid_amount ?? 0)) }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted">Tidak ada data</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
 @endsection
-

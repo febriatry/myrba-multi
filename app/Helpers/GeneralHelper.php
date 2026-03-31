@@ -2127,7 +2127,8 @@ function resolveTripayConfigForTenantId(int $tenantId): ?array
     }
 
     $providerMode = strtolower((string) ($tenant->tripay_provider_mode ?? 'owner'));
-    if ($providerMode !== 'tenant') {
+    $gatewayMode = $providerMode === 'tenant' ? 'tenant' : 'owner';
+    if ($gatewayMode === 'owner') {
         $settingWeb = getSettingWeb();
         $baseUrl = trim((string) ($settingWeb->url_tripay ?? ''));
         $apiKey = trim((string) ($settingWeb->api_key_tripay ?? ''));
@@ -2149,7 +2150,37 @@ function resolveTripayConfigForTenantId(int $tenantId): ?array
         'api_key' => $apiKey,
         'merchant_code' => $merchantCode,
         'private_key' => $privateKey,
+        'gateway_mode' => $gatewayMode,
     ];
+}
+
+function recordTripayUsageLog(int $tenantId, string $merchantRef, array $attrs = []): void
+{
+    if ($tenantId < 1 || trim($merchantRef) === '') {
+        return;
+    }
+    if (! class_exists(\App\Models\TripayUsageLog::class)) {
+        return;
+    }
+
+    $gatewayMode = (string) ($attrs['gateway_mode'] ?? 'owner');
+    $defaults = [
+        'tenant_id' => $tenantId,
+        'merchant_ref' => $merchantRef,
+        'tripay_reference' => $attrs['tripay_reference'] ?? null,
+        'type' => $attrs['type'] ?? null,
+        'method' => $attrs['method'] ?? null,
+        'status' => $attrs['status'] ?? null,
+        'amount' => isset($attrs['amount']) && is_numeric($attrs['amount']) ? (int) $attrs['amount'] : 0,
+        'gateway_mode' => $gatewayMode,
+        'paid_at' => $attrs['paid_at'] ?? null,
+        'payload' => $attrs['payload'] ?? null,
+    ];
+
+    \App\Models\TripayUsageLog::query()->updateOrCreate(
+        ['merchant_ref' => $merchantRef, 'gateway_mode' => $gatewayMode],
+        $defaults
+    );
 }
 
 function resolveTenantIdFromTagihanId(int $tagihanId): int

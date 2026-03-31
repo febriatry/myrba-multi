@@ -177,6 +177,16 @@ class WebController extends Controller
             DB::table('tagihans')->where('id', (int) $tagihan_id)->update([
                 'tripay_reference' => (string) $response->reference,
             ]);
+            if (($tripay['gateway_mode'] ?? 'owner') === 'owner') {
+                recordTripayUsageLog($tenantId, (string) $merchantRef, [
+                    'gateway_mode' => 'owner',
+                    'type' => 'tagihan',
+                    'status' => 'CREATED',
+                    'amount' => (int) $amount,
+                    'method' => (string) $method,
+                    'tripay_reference' => (string) $response->reference,
+                ]);
+            }
         }
 
         return redirect()->route('detailBayar', [

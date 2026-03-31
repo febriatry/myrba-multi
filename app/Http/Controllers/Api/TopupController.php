@@ -4,18 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Pelanggan;
-use App\Models\SettingWeb;
+use App\Models\Topup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Image;
-use Illuminate\Support\Facades\Storage;
-use App\Models\Topup;
 
 class TopupController extends Controller
-
 {
     /**
      * Get topup history for a customer.
@@ -38,10 +35,18 @@ class TopupController extends Controller
 
         $query = DB::table('topups')->where('pelanggan_id', $pelangganId);
 
-        if ($startDate) $query->whereDate('tanggal_topup', '>=', $startDate);
-        if ($endDate) $query->whereDate('tanggal_topup', '<=', $endDate);
-        if ($status && $status !== 'Semua') $query->where('status', strtolower($status));
-        if ($metode && $metode !== 'Semua') $query->where('metode', strtolower($metode));
+        if ($startDate) {
+            $query->whereDate('tanggal_topup', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->whereDate('tanggal_topup', '<=', $endDate);
+        }
+        if ($status && $status !== 'Semua') {
+            $query->where('status', strtolower($status));
+        }
+        if ($metode && $metode !== 'Semua') {
+            $query->where('metode', strtolower($metode));
+        }
 
         $total = $query->count();
         $data = $query->orderByDesc('tanggal_topup')->offset($offset)->limit($limit)->get();
@@ -63,6 +68,7 @@ class TopupController extends Controller
         if ($apiKeyError) {
             return $apiKeyError;
         }
+
         return apiResponse(false, 'Top up manual dinonaktifkan. Silakan gunakan top up via Tripay.', [], 403);
     }
 
@@ -87,45 +93,62 @@ class TopupController extends Controller
         }
 
         $pelanggan = Pelanggan::find($request->pelanggan_id);
-        $settingWeb = SettingWeb::first();
+        $tenantId = (int) ($pelanggan->tenant_id ?? 0);
+        $tripay = resolveTripayConfigForTenantId($tenantId);
+        if (! $tripay) {
+            return apiResponse(false, 'Tripay belum dikonfigurasi untuk tenant ini.', [], 400);
+        }
 
-        $apiKey = $settingWeb->api_key_tripay;
-        $privateKey = $settingWeb->private_key;
-        $merchantCode = $settingWeb->kode_merchant;
-        $merchantRef = 'TOPUP-' . strtoupper(Str::random(10));
+        $apiKey = $tripay['api_key'];
+        $privateKey = $tripay['private_key'];
+        $merchantCode = $tripay['merchant_code'];
+        $merchantRef = 'TOPUP-'.strtoupper(Str::random(10));
         $amount = $request->nominal;
 
         $data = [
-            'method'         => $request->method_code,
-            'merchant_ref'   => $merchantRef,
-            'amount'         => $amount,
-            'customer_name'  => $pelanggan->nama,
+            'method' => $request->method_code,
+            'merchant_ref' => $merchantRef,
+            'amount' => $amount,
+            'customer_name' => $pelanggan->nama,
             'customer_email' => $pelanggan->email,
             'customer_phone' => $pelanggan->no_wa,
-            'order_items'    => [
+            'order_items' => [
                 [
-                    'sku'         => 'TOPUP-SALDO',
-                    'name'        => 'Top Up Saldo',
-                    'price'       => $amount,
-                    'quantity'    => 1,
-                ]
+                    'sku' => 'TOPUP-SALDO',
+                    'name' => 'Top Up Saldo',
+                    'price' => $amount,
+                    'quantity' => 1,
+                ],
             ],
             'expired_time' => (time() + (24 * 60 * 60)), // 24 hours
-            'signature'    => hash_hmac('sha256', $merchantCode . $merchantRef . $amount, $privateKey)
+            'signature' => hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey),
         ];
 
         try {
-            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
-                ->post($settingWeb->url_tripay . 'transaction/create', $data);
+            $response = Http::withHeaders(['Authorization' => 'Bearer '.$apiKey])
+                ->post($tripay['base_url'].'transaction/create', $data);
 
             $result = $response->json();
 
-            if (!$result['success']) {
+            if (! $result['success']) {
                 return apiResponse(false, $result['message'] ?? 'Gagal membuat transaksi Tripay', [], 400);
+            }
+
+            $tripayRef = is_array($result['data'] ?? null) ? ($result['data']['reference'] ?? null) : null;
+            if (($tripay['gateway_mode'] ?? 'owner') === 'owner') {
+                recordTripayUsageLog($tenantId, $merchantRef, [
+                    'gateway_mode' => 'owner',
+                    'type' => 'topup',
+                    'status' => 'CREATED',
+                    'amount' => $amount,
+                    'method' => $request->method_code,
+                    'tripay_reference' => $tripayRef,
+                ]);
             }
 
             // Simpan data topup ke database dengan status pending
             DB::table('topups')->insert([
+                'tenant_id' => $tenantId,
                 'no_topup' => $merchantRef,
                 'pelanggan_id' => $request->pelanggan_id,
                 'tanggal_topup' => now(),
@@ -140,7 +163,7 @@ class TopupController extends Controller
 
             return apiResponse(true, 'Transaksi Tripay berhasil dibuat.', $result['data']);
         } catch (\Exception $e) {
-            return apiResponse(false, 'Gagal terhubung ke payment gateway: ' . $e->getMessage(), [], 500);
+            return apiResponse(false, 'Gagal terhubung ke payment gateway: '.$e->getMessage(), [], 500);
         }
     }
 
@@ -153,9 +176,9 @@ class TopupController extends Controller
         if ($apiKeyError) {
             return $apiKeyError;
         }
+
         return apiResponse(false, 'Top up manual dinonaktifkan. Silakan gunakan top up via Tripay.', [], 403);
     }
-
 
     /**
      * Delete a manual topup request.
@@ -166,13 +189,13 @@ class TopupController extends Controller
         if ($apiKeyError) {
             return $apiKeyError;
         }
+
         return apiResponse(false, 'Top up manual dinonaktifkan. Silakan gunakan top up via Tripay.', [], 403);
     }
 
     /**
      * Hapus data top up dari database.
      *
-     * @param  \App\Models\Topup  $topup
      * @return \Illuminate\Http\Response
      */
     public function destroy(Topup $topup)
@@ -187,7 +210,7 @@ class TopupController extends Controller
 
         // Jika top up manual, hapus juga bukti transfernya
         if ($topup->metode == 'manual' && $topup->bukti_topup) {
-            Storage::delete('public/uploads/bukti_topup/' . $topup->bukti_topup);
+            Storage::delete('public/uploads/bukti_topup/'.$topup->bukti_topup);
         }
 
         // Hapus data dari database

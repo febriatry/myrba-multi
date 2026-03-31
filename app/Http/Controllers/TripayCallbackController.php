@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Response;
-use App\Models\Tagihan;
-use App\Models\Pelanggan;
 use App\Models\BalanceHistory;
+use App\Models\Pelanggan;
 use App\Models\Pemasukan;
+use App\Models\Tagihan;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Str;
-use \RouterOS\Client;
-use \RouterOS\Query;
-use \RouterOS\Exceptions\ConnectException;
+use RouterOS\Client;
+use RouterOS\Exceptions\ConnectException;
+use RouterOS\Query;
 
 class TripayCallbackController extends Controller
 {
@@ -23,7 +22,7 @@ class TripayCallbackController extends Controller
         $callbackSignature = $request->server('HTTP_X_CALLBACK_SIGNATURE');
         $json = $request->getContent();
 
-        if ('payment_status' !== (string) $request->server('HTTP_X_CALLBACK_EVENT')) {
+        if ((string) $request->server('HTTP_X_CALLBACK_EVENT') !== 'payment_status') {
             return Response::json([
                 'success' => false,
                 'message' => 'Unrecognized callback event, no action was taken',
@@ -31,7 +30,7 @@ class TripayCallbackController extends Controller
         }
 
         $data = json_decode($json);
-        if (JSON_ERROR_NONE !== json_last_error()) {
+        if (json_last_error() !== JSON_ERROR_NONE) {
             return Response::json([
                 'success' => false,
                 'message' => 'Invalid data sent by Tripay',
@@ -84,10 +83,10 @@ class TripayCallbackController extends Controller
                 )
                 ->first();
 
-            if (!$invoice) {
+            if (! $invoice) {
                 return Response::json([
                     'success' => false,
-                    'message' => 'No invoice found or already paid: ' . $invoiceId,
+                    'message' => 'No invoice found or already paid: '.$invoiceId,
                 ]);
             }
 
@@ -100,7 +99,7 @@ class TripayCallbackController extends Controller
                             'payload_tripay' => $json,
                             'metode_bayar' => 'Payment Tripay',
                             'tanggal_bayar' => now(),
-                            'tanggal_kirim_notif_wa' => now()
+                            'tanggal_kirim_notif_wa' => now(),
                         ]);
                     break;
 
@@ -110,7 +109,7 @@ class TripayCallbackController extends Controller
                         ->where('no_tagihan', $invoiceId)
                         ->update([
                             'status_bayar' => 'Belum Bayar',
-                            'payload_tripay' => $json
+                            'payload_tripay' => $json,
                         ]);
                     break;
 
@@ -124,12 +123,13 @@ class TripayCallbackController extends Controller
             if ($status == 'PAID') {
                 $categoryId = getInternetIncomeCategoryIdForPelanggan($invoice->pelanggan_id);
                 DB::table('pemasukans')->insert([
+                    'tenant_id' => (int) $tenantId,
                     'nominal' => $invoice->total_bayar,
                     'tanggal' => now(),
                     'category_pemasukan_id' => $categoryId,
                     'referense_id' => $invoice->tagihan_id,
                     'metode_bayar' => 'Payment Tripay',
-                    'keterangan' => 'Pembayaran Tagihan no Tagihan ' . $invoice->no_tagihan . ' a/n ' . $invoice->nama_pelanggan . ' Periode ' . $invoice->periode,
+                    'keterangan' => 'Pembayaran Tagihan no Tagihan '.$invoice->no_tagihan.' a/n '.$invoice->nama_pelanggan.' Periode '.$invoice->periode,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -166,7 +166,7 @@ class TripayCallbackController extends Controller
                         $queryGet = (new Query('/ppp/secret/print'))
                             ->where('name', $pelanggan->user_pppoe);
                         $data = $client->query($queryGet)->read();
-                        if (!empty($data) && isset($data[0]['.id'])) {
+                        if (! empty($data) && isset($data[0]['.id'])) {
                             $idSecret = $data[0]['.id'];
                             $existingComment = $data[0]['comment'] ?? null;
                             $comment = myrbaMergeMikrotikComment($existingComment, 'Isolir terbuka otomatis (lunas)');
@@ -181,7 +181,7 @@ class TripayCallbackController extends Controller
                         $queryGet = (new Query('/ppp/active/print'))
                             ->where('name', $pelanggan->user_pppoe);
                         $data = $client->query($queryGet)->read();
-                        if (!empty($data) && isset($data[0]['.id'])) {
+                        if (! empty($data) && isset($data[0]['.id'])) {
                             $idActive = $data[0]['.id'];
                             $queryDelete = (new Query('/ppp/active/remove'))
                                 ->equal('.id', $idActive);
@@ -210,6 +210,19 @@ class TripayCallbackController extends Controller
                         ->update(['status_berlangganan' => 'Aktif']);
                 }
             }
+
+            if ($tripay && ($tripay['gateway_mode'] ?? 'owner') === 'owner') {
+                recordTripayUsageLog((int) $tenantId, (string) $invoiceId, [
+                    'gateway_mode' => 'owner',
+                    'type' => 'tagihan',
+                    'status' => $status,
+                    'amount' => (int) ($invoice->nominal ?? $invoice->total_bayar ?? 0),
+                    'method' => $data->payment_method ?? ($data->payment_method_code ?? null),
+                    'tripay_reference' => $data->reference ?? null,
+                    'paid_at' => $status === 'PAID' ? now() : null,
+                    'payload' => json_decode($json, true),
+                ]);
+            }
         } elseif (Str::startsWith($invoiceId, 'TOPUP-')) {
             // ====== TOP-UP SALDO ======
             $topup = DB::table('topups')
@@ -217,10 +230,10 @@ class TripayCallbackController extends Controller
                 ->where('status', 'pending')
                 ->first();
 
-            if (!$topup) {
+            if (! $topup) {
                 return Response::json([
                     'success' => false,
-                    'message' => 'No topup found or already processed: ' . $invoiceId,
+                    'message' => 'No topup found or already processed: '.$invoiceId,
                 ]);
             }
 
@@ -244,13 +257,14 @@ class TripayCallbackController extends Controller
                         'amount' => $topup->nominal,
                         'balance_before' => $balanceBefore,
                         'balance_after' => $balanceAfter,
-                        'description' => "Top-up saldo via Tripay ({$topup->metode_topup}) sebesar " . rupiah($topup->nominal),
+                        'description' => "Top-up saldo via Tripay ({$topup->metode_topup}) sebesar ".rupiah($topup->nominal),
                     ]);
 
                     Pemasukan::create([
+                        'tenant_id' => (int) $tenantId,
                         'nominal' => $topup->nominal,
                         'tanggal' => now(),
-                        'keterangan' => "Topup pelanggan {$pelanggan->nama} via Tripay tanggal " . now()->format('d-m-Y') . " sebesar " . rupiah($topup->nominal),
+                        'keterangan' => "Topup pelanggan {$pelanggan->nama} via Tripay tanggal ".now()->format('d-m-Y').' sebesar '.rupiah($topup->nominal),
                         'category_pemasukan_id' => 2,
                         'metode_bayar' => 'Payment Tripay',
                     ]);
@@ -260,12 +274,25 @@ class TripayCallbackController extends Controller
                     DB::commit();
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    Log::error('Gagal memproses callback topup: ' . $e->getMessage());
+                    Log::error('Gagal memproses callback topup: '.$e->getMessage());
                 }
             } else {
                 DB::table('topups')->where('id', $topup->id)->update([
                     'status' => strtolower($status),
                     'payload_tripay' => $json,
+                ]);
+            }
+
+            if ($tripay && ($tripay['gateway_mode'] ?? 'owner') === 'owner') {
+                recordTripayUsageLog((int) $tenantId, (string) $invoiceId, [
+                    'gateway_mode' => 'owner',
+                    'type' => 'topup',
+                    'status' => $status,
+                    'amount' => (int) ($topup->nominal ?? 0),
+                    'method' => $data->payment_method ?? ($data->payment_method_code ?? null),
+                    'tripay_reference' => $data->reference ?? null,
+                    'paid_at' => $status === 'PAID' ? now() : null,
+                    'payload' => json_decode($json, true),
                 ]);
             }
         }
@@ -285,8 +312,8 @@ class TripayCallbackController extends Controller
                     'port' => (int) $router->port,
                 ]);
             } catch (ConnectException $e) {
-                echo $e->getMessage() . PHP_EOL;
-                die();
+                echo $e->getMessage().PHP_EOL;
+                exit();
             }
         }
     }

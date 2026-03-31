@@ -16,8 +16,8 @@
                 <div class="col-12">
                     <label class="form-label">Mode</label>
                     <select name="wa_provider_mode" class="form-select" required>
-                        <option value="developer" @selected(old('wa_provider_mode', $tenant->wa_provider_mode) === 'developer')>Pakai layanan developer</option>
-                        <option value="tenant" @selected(old('wa_provider_mode', $tenant->wa_provider_mode) === 'tenant')>Pakai API sendiri (Ivosight)</option>
+                        <option value="app" @selected(in_array(old('wa_provider_mode', $tenant->wa_provider_mode), ['app', 'owner', 'developer'], true))>Pakai fasilitas App (Owner)</option>
+                        <option value="manual" @selected(in_array(old('wa_provider_mode', $tenant->wa_provider_mode), ['manual', 'tenant'], true))>Manual (API sendiri / Tenant)</option>
                     </select>
                 </div>
 
@@ -43,4 +43,3 @@
         </div>
     </div>
 @endsection
-

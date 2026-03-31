@@ -15,8 +15,8 @@
                 <div class="col-12 col-md-6">
                     <label class="form-label">Mode Tripay</label>
                     <select name="tripay_provider_mode" class="form-select" required>
-                        <option value="owner" @selected(old('tripay_provider_mode', $tenant->tripay_provider_mode ?? 'owner') === 'owner')>Gunakan Tripay Owner</option>
-                        <option value="tenant" @selected(old('tripay_provider_mode', $tenant->tripay_provider_mode ?? 'owner') === 'tenant')>Gunakan Tripay Tenant</option>
+                        <option value="owner" @selected(old('tripay_provider_mode', $tenant->tripay_provider_mode ?? 'owner') === 'owner')>Pakai fasilitas App (Owner)</option>
+                        <option value="tenant" @selected(old('tripay_provider_mode', $tenant->tripay_provider_mode ?? 'owner') === 'tenant')>Manual (API sendiri / Tenant)</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-6">
