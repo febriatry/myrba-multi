@@ -635,16 +635,28 @@ function resolvePreferredTemplateIdForTrigger(string $normalizedTypePesan, strin
     }
 
     $forcedTemplateId = '';
-    if ($normalizedTypePesan === WaMessageTrigger::BILLING_REMINDER) {
-        $forcedTemplateId = trim((string) config('whatsapp.ivosight.template_id_billing_reminder'));
-    } elseif ($normalizedTypePesan === WaMessageTrigger::PAYMENT_RECEIPT) {
-        $forcedTemplateId = trim((string) config('whatsapp.ivosight.template_id_payment_receipt'));
-    } elseif ($normalizedTypePesan === WaMessageTrigger::WELCOME_REGISTRATION) {
-        $forcedTemplateId = trim((string) config('whatsapp.ivosight.template_id_welcome_registration'));
-    } elseif ($normalizedTypePesan === WaMessageTrigger::INVOICE_LINK) {
-        $forcedTemplateId = trim((string) config('whatsapp.ivosight.template_id_invoice_link'));
-    } elseif ($normalizedTypePesan === WaMessageTrigger::BROADCAST) {
-        $forcedTemplateId = trim((string) config('whatsapp.ivosight.template_id_broadcast'));
+    $settingWeb = null;
+    try {
+        $settingWeb = getSettingWeb();
+    } catch (\Throwable $e) {
+        $settingWeb = null;
+    }
+    $defaults = is_array($settingWeb?->wa_template_defaults_json) ? $settingWeb->wa_template_defaults_json : [];
+    if (isset($defaults[$normalizedTypePesan])) {
+        $forcedTemplateId = trim((string) $defaults[$normalizedTypePesan]);
+    }
+    if ($forcedTemplateId === '') {
+        if ($normalizedTypePesan === WaMessageTrigger::BILLING_REMINDER) {
+            $forcedTemplateId = trim((string) config('whatsapp.ivosight.template_id_billing_reminder'));
+        } elseif ($normalizedTypePesan === WaMessageTrigger::PAYMENT_RECEIPT) {
+            $forcedTemplateId = trim((string) config('whatsapp.ivosight.template_id_payment_receipt'));
+        } elseif ($normalizedTypePesan === WaMessageTrigger::WELCOME_REGISTRATION) {
+            $forcedTemplateId = trim((string) config('whatsapp.ivosight.template_id_welcome_registration'));
+        } elseif ($normalizedTypePesan === WaMessageTrigger::INVOICE_LINK) {
+            $forcedTemplateId = trim((string) config('whatsapp.ivosight.template_id_invoice_link'));
+        } elseif ($normalizedTypePesan === WaMessageTrigger::BROADCAST) {
+            $forcedTemplateId = trim((string) config('whatsapp.ivosight.template_id_broadcast'));
+        }
     }
 
     if ($forcedTemplateId !== '') {

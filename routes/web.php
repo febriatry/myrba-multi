@@ -70,6 +70,7 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::get('settings', [PlatformSettingsController::class, 'index'])->name('settings.index');
         Route::post('settings/tripay', [PlatformSettingsController::class, 'updateTripay'])->name('settings.update.tripay');
         Route::post('settings/wa', [PlatformSettingsController::class, 'updateWa'])->name('settings.update.wa');
+        Route::post('settings/wa-templates', [PlatformSettingsController::class, 'updateWaTemplates'])->name('settings.update.wa-templates');
     });
 
     Route::get('/profile', App\Http\Controllers\ProfileController::class)->name('profile');

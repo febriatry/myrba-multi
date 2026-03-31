@@ -21,7 +21,7 @@ class SettingWeb extends Model
      *
      * @var string[]
      */
-    protected $fillable = ['nama_perusahaan', 'telepon_perusahaan', 'email', 'no_wa', 'alamat', 'deskripsi_perusahaan', 'logo', 'url_tripay', 'api_key_tripay', 'kode_merchant', 'private_key', 'nominal_referal', 'is_wa_broadcast_active', 'is_wa_billing_active', 'is_wa_payment_active', 'is_wa_welcome_active', 'video_url_1', 'video_url_2'];
+    protected $fillable = ['nama_perusahaan', 'telepon_perusahaan', 'email', 'no_wa', 'alamat', 'deskripsi_perusahaan', 'logo', 'url_tripay', 'api_key_tripay', 'kode_merchant', 'private_key', 'nominal_referal', 'is_wa_broadcast_active', 'is_wa_billing_active', 'is_wa_payment_active', 'is_wa_welcome_active', 'wa_template_defaults_json', 'video_url_1', 'video_url_2'];
 
     /**
      * The attributes that should be hidden for arrays.
@@ -34,5 +34,5 @@ class SettingWeb extends Model
      *
      * @var string[]
      */
-    protected $casts = ['nama_perusahaan' => 'string', 'telepon_perusahaan' => 'string', 'email' => 'string', 'no_wa' => 'string', 'alamat' => 'string', 'deskripsi_perusahaan' => 'string', 'logo' => 'string', 'url_tripay' => 'string', 'api_key_tripay' => 'string', 'kode_merchant' => 'string', 'private_key' => 'string', 'is_wa_broadcast_active' => 'string', 'is_wa_billing_active' => 'string', 'is_wa_payment_active' => 'string', 'is_wa_welcome_active' => 'string', 'video_url_1' => 'string', 'video_url_2' => 'string', 'created_at' => 'datetime:d/m/Y H:i', 'updated_at' => 'datetime:d/m/Y H:i'];
+    protected $casts = ['nama_perusahaan' => 'string', 'telepon_perusahaan' => 'string', 'email' => 'string', 'no_wa' => 'string', 'alamat' => 'string', 'deskripsi_perusahaan' => 'string', 'logo' => 'string', 'url_tripay' => 'string', 'api_key_tripay' => 'string', 'kode_merchant' => 'string', 'private_key' => 'string', 'is_wa_broadcast_active' => 'string', 'is_wa_billing_active' => 'string', 'is_wa_payment_active' => 'string', 'is_wa_welcome_active' => 'string', 'wa_template_defaults_json' => 'array', 'video_url_1' => 'string', 'video_url_2' => 'string', 'created_at' => 'datetime:d/m/Y H:i', 'updated_at' => 'datetime:d/m/Y H:i'];
 }

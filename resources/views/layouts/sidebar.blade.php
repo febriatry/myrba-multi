@@ -80,11 +80,31 @@
                         ->where('roles.name', 'Platform Owner')
                         ->where('roles.tenant_id', 0)
                         ->exists())
-                    <li class="sidebar-item{{ request()->is('platform') || request()->is('platform/*') ? ' active' : '' }}">
-                        <a class="sidebar-link" href="{{ route('platform.dashboard') }}">
+                    @php
+                        $platformMenuActive = request()->is('platform') || request()->is('platform/*') || request()->is('wa-config') || request()->is('wa-config/*');
+                    @endphp
+                    <li class="sidebar-item has-sub{{ $platformMenuActive ? ' active' : '' }}">
+                        <a href="#" class="sidebar-link">
                             <i class="bi bi-diagram-3"></i>
                             <span>Platform</span>
                         </a>
+                        <ul class="submenu">
+                            <li class="submenu-item{{ request()->is('platform') ? ' active' : '' }}">
+                                <a href="{{ route('platform.dashboard') }}">Dashboard</a>
+                            </li>
+                            <li class="submenu-item{{ request()->is('platform/settings') ? ' active' : '' }}">
+                                <a href="{{ route('platform.settings.index') }}">Owner Settings</a>
+                            </li>
+                            <li class="submenu-item{{ request()->is('wa-config') || request()->is('wa-config/*') ? ' active' : '' }}">
+                                <a href="{{ route('wa-config.index') }}">WA Config</a>
+                            </li>
+                            <li class="submenu-item{{ request()->is('platform/wa-usage') ? ' active' : '' }}">
+                                <a href="{{ route('platform.wa-usage.index') }}">WA Usage</a>
+                            </li>
+                            <li class="submenu-item{{ request()->is('platform/plans') || request()->is('platform/plans/*') ? ' active' : '' }}">
+                                <a href="{{ route('platform.plans.index') }}">Paket</a>
+                            </li>
+                        </ul>
                     </li>
                 @endif
                 @role('Super Admin')

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SettingWeb;
+use App\Models\WaTemplate;
 use Illuminate\Http\Request;
 
 class PlatformSettingsController extends Controller
@@ -15,9 +16,13 @@ class PlatformSettingsController extends Controller
     public function index()
     {
         $setting = getSettingWeb();
+        $templates = WaTemplate::query()->orderBy('name')->orderBy('template_id')->get(['template_id', 'name', 'status', 'language']);
+        $defaults = is_array($setting?->wa_template_defaults_json) ? $setting->wa_template_defaults_json : [];
 
         return view('platform.settings', [
             'setting' => $setting,
+            'templates' => $templates,
+            'waTemplateDefaults' => $defaults,
         ]);
     }
 
@@ -70,5 +75,41 @@ class PlatformSettingsController extends Controller
         $setting->save();
 
         return redirect()->route('platform.settings.index')->with('success', 'WA broadcast settings berhasil diperbarui.');
+    }
+
+    public function updateWaTemplates(Request $request)
+    {
+        $templateIds = WaTemplate::query()->pluck('template_id')->filter()->values()->all();
+
+        $validated = $request->validate([
+            'billing_reminder' => 'nullable|string|max:80',
+            'billing_total' => 'nullable|string|max:80',
+            'invoice_link' => 'nullable|string|max:80',
+            'broadcast' => 'nullable|string|max:80',
+            'payment_receipt' => 'nullable|string|max:80',
+            'welcome_registration' => 'nullable|string|max:80',
+        ]);
+
+        $allowed = array_fill_keys($templateIds, true);
+        $map = [];
+        foreach ($validated as $k => $v) {
+            $id = trim((string) $v);
+            if ($id === '') {
+                continue;
+            }
+            if (! isset($allowed[$id])) {
+                return redirect()->back()->withInput()->with('error', 'Template ID tidak valid: '.$id);
+            }
+            $map[$k] = $id;
+        }
+
+        $setting = SettingWeb::query()->first();
+        if (! $setting) {
+            $setting = new SettingWeb;
+        }
+        $setting->wa_template_defaults_json = $map;
+        $setting->save();
+
+        return redirect()->route('platform.settings.index')->with('success', 'WA template defaults berhasil diperbarui.');
     }
 }

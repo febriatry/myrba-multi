@@ -86,6 +86,48 @@
                 </form>
             </div>
         </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">WA Template Defaults</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    Default template ini dipakai saat kirim template WA untuk tenant yang memakai fasilitas App (Owner). Untuk mapping variabel per template (parameter), buka halaman WA Config.
+                    <a href="{{ route('wa-config.index') }}" class="ms-1">Buka WA Config</a>
+                </div>
+                <form method="POST" action="{{ route('platform.settings.update.wa-templates') }}" class="row g-2">
+                    @csrf
+                    @php
+                        $waTemplateOptions = $templates ?? collect();
+                        $defaults = $waTemplateDefaults ?? [];
+                        $rows = [
+                            'billing_reminder' => 'Billing Reminder',
+                            'billing_total' => 'Billing Total',
+                            'invoice_link' => 'Invoice Link',
+                            'broadcast' => 'Broadcast',
+                            'payment_receipt' => 'Payment Receipt',
+                            'welcome_registration' => 'Welcome Registration',
+                        ];
+                    @endphp
+                    @foreach ($rows as $key => $label)
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">{{ $label }}</label>
+                            <select name="{{ $key }}" class="form-select">
+                                <option value="" @selected(old($key, $defaults[$key] ?? '') === '')>Auto (sesuai mapping)</option>
+                                @foreach ($waTemplateOptions as $t)
+                                    <option value="{{ $t->template_id }}" @selected(old($key, $defaults[$key] ?? '') === $t->template_id)>
+                                        {{ $t->name ?? '-' }} ({{ $t->template_id }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endforeach
+                    <div class="col-12">
+                        <button class="btn btn-primary">Simpan Template Defaults</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </section>
 @endsection
-
