@@ -2192,10 +2192,14 @@ function recordTripayUsageLog(int $tenantId, string $merchantRef, array $attrs =
         'payload' => $attrs['payload'] ?? null,
     ];
 
-    \App\Models\TripayUsageLog::query()->updateOrCreate(
-        ['merchant_ref' => $merchantRef, 'gateway_mode' => $gatewayMode],
-        $defaults
-    );
+    try {
+        \App\Models\TripayUsageLog::query()->updateOrCreate(
+            ['merchant_ref' => $merchantRef, 'gateway_mode' => $gatewayMode],
+            $defaults
+        );
+    } catch (\Throwable $e) {
+        return;
+    }
 }
 
 function resolveTenantIdFromTagihanId(int $tagihanId): int
