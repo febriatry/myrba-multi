@@ -92,6 +92,9 @@
                             <li class="submenu-item{{ request()->is('platform') ? ' active' : '' }}">
                                 <a href="{{ route('platform.dashboard') }}">Dashboard</a>
                             </li>
+                            <li class="submenu-item{{ request()->is('platform/tenants') || request()->is('platform/tenants/*') ? ' active' : '' }}">
+                                <a href="{{ route('platform.tenants.index') }}">Tenant</a>
+                            </li>
                             <li class="submenu-item{{ request()->is('platform/settings') ? ' active' : '' }}">
                                 <a href="{{ route('platform.settings.index') }}">Owner Settings</a>
                             </li>

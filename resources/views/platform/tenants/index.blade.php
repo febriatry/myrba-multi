@@ -41,6 +41,7 @@
                                     <td>{{ $t->status }}</td>
                                     <td>{{ $t->plan?->name ?? '-' }}</td>
                                     <td class="d-flex gap-2">
+                                        <a class="btn btn-sm btn-outline-secondary" href="{{ route('platform.tenants.super-admins.index', $t->id) }}">Super Admin</a>
                                         <a class="btn btn-sm btn-outline-primary" href="{{ route('platform.tenants.edit', $t->id) }}">Edit</a>
                                         <form method="POST" action="{{ route('platform.tenants.destroy', $t->id) }}" onsubmit="return confirm('Hapus tenant ini?')">
                                             @csrf
@@ -61,4 +62,3 @@
         </div>
     </section>
 @endsection
-

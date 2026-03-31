@@ -6,11 +6,13 @@ use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\PlatformOwnerDashboardController;
 use App\Http\Controllers\PlatformSettingsController;
+use App\Http\Controllers\PlatformTenantSuperAdminController;
 use App\Http\Controllers\PlatformWaUsageController;
 use App\Http\Controllers\TagihanController;
 use App\Http\Controllers\TenantAdminDashboardController;
 use App\Http\Controllers\TenantPaymentController;
 use App\Http\Controllers\TenantPlanController;
+use App\Http\Controllers\TenantPlatformController;
 use App\Http\Controllers\TenantWaController;
 use App\Http\Controllers\WaTunggakanBroadcastController;
 use Illuminate\Support\Facades\Route;
@@ -65,6 +67,10 @@ Route::middleware(['auth', 'web'])->group(function () {
 
     Route::prefix('platform')->name('platform.')->middleware(['platform.team', 'role:Platform Owner'])->group(function () {
         Route::get('/', [PlatformOwnerDashboardController::class, 'index'])->name('dashboard');
+        Route::resource('tenants', TenantPlatformController::class)->except(['show']);
+        Route::get('tenants/{tenant}/super-admins', [PlatformTenantSuperAdminController::class, 'index'])->name('tenants.super-admins.index');
+        Route::post('tenants/{tenant}/super-admins', [PlatformTenantSuperAdminController::class, 'store'])->name('tenants.super-admins.store');
+        Route::delete('tenants/{tenant}/super-admins/{userId}', [PlatformTenantSuperAdminController::class, 'destroy'])->name('tenants.super-admins.destroy');
         Route::resource('plans', TenantPlanController::class)->except(['show']);
         Route::get('wa-usage', [PlatformWaUsageController::class, 'index'])->name('wa-usage.index');
         Route::get('settings', [PlatformSettingsController::class, 'index'])->name('settings.index');
@@ -79,7 +85,7 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::get('/dashboard/finance-monthly', 'financeMonthly')->name('dashboard.financeMonthly');
         Route::get('/dashboard/invoice-status-monthly', 'invoiceStatusMonthly')->name('dashboard.invoiceStatusMonthly');
     });
-    Route::middleware(['platform.team', 'role:Platform Operator'])->group(function () {
+    Route::middleware(['platform.team', 'role:Platform Operator|Platform Owner'])->group(function () {
         Route::get('/wa-config', [\App\Http\Controllers\WaConfigController::class, 'index'])->name('wa-config.index');
         Route::post('/wa-config/toggle-status', [\App\Http\Controllers\WaConfigController::class, 'toggleStatus'])->name('wa-config.toggle-status');
         Route::post('/wa-config/test-connection', [\App\Http\Controllers\WaConfigController::class, 'testConnection'])->name('wa-config.test-connection');
