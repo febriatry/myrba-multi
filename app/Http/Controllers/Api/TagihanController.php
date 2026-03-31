@@ -396,16 +396,6 @@ class TagihanController extends Controller
             }
 
             $transaction = $result['data'];
-            if (($tripay['gateway_mode'] ?? 'owner') === 'owner') {
-                recordTripayUsageLog((int) $tenantId, (string) $merchantRef, [
-                    'gateway_mode' => 'owner',
-                    'type' => 'tagihan',
-                    'status' => 'CREATED',
-                    'amount' => (int) $amount,
-                    'method' => (string) $methodCode,
-                    'tripay_reference' => is_array($transaction) ? ($transaction['reference'] ?? null) : null,
-                ]);
-            }
 
             // For e-wallets, just return the checkout URL
             if (empty($transaction['pay_code']) && ! empty($transaction['checkout_url'])) {

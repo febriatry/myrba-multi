@@ -94,11 +94,12 @@ class PlatformOwnerDashboardController extends Controller
         $tripayBase = DB::table('tripay_usage_logs as l')
             ->leftJoin('tenants as t', 't.id', '=', 'l.tenant_id')
             ->where('l.gateway_mode', 'owner')
-            ->whereBetween('l.created_at', [$start, $end]);
+            ->where('l.status', 'PAID')
+            ->whereBetween('l.paid_at', [$start, $end]);
 
         $tripayTotal = (int) (clone $tripayBase)->count();
-        $tripayPaidTotal = (int) (clone $tripayBase)->where('l.status', 'PAID')->count();
-        $tripayPaidAmount = (int) (clone $tripayBase)->where('l.status', 'PAID')->sum('l.amount');
+        $tripayPaidTotal = $tripayTotal;
+        $tripayPaidAmount = (int) (clone $tripayBase)->sum('l.amount');
 
         $tripayByTenant = (clone $tripayBase)
             ->select(

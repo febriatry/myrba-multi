@@ -135,16 +135,6 @@ class TopupController extends Controller
             }
 
             $tripayRef = is_array($result['data'] ?? null) ? ($result['data']['reference'] ?? null) : null;
-            if (($tripay['gateway_mode'] ?? 'owner') === 'owner') {
-                recordTripayUsageLog($tenantId, $merchantRef, [
-                    'gateway_mode' => 'owner',
-                    'type' => 'topup',
-                    'status' => 'CREATED',
-                    'amount' => $amount,
-                    'method' => $request->method_code,
-                    'tripay_reference' => $tripayRef,
-                ]);
-            }
 
             // Simpan data topup ke database dengan status pending
             DB::table('topups')->insert([

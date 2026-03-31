@@ -211,15 +211,15 @@ class TripayCallbackController extends Controller
                 }
             }
 
-            if ($tripay && ($tripay['gateway_mode'] ?? 'owner') === 'owner') {
+            if ($status === 'PAID' && $tripay && ($tripay['gateway_mode'] ?? 'owner') === 'owner') {
                 recordTripayUsageLog((int) $tenantId, (string) $invoiceId, [
                     'gateway_mode' => 'owner',
                     'type' => 'tagihan',
-                    'status' => $status,
+                    'status' => 'PAID',
                     'amount' => (int) ($invoice->nominal ?? $invoice->total_bayar ?? 0),
                     'method' => $data->payment_method ?? ($data->payment_method_code ?? null),
                     'tripay_reference' => $data->reference ?? null,
-                    'paid_at' => $status === 'PAID' ? now() : null,
+                    'paid_at' => now(),
                     'payload' => json_decode($json, true),
                 ]);
             }
@@ -283,15 +283,15 @@ class TripayCallbackController extends Controller
                 ]);
             }
 
-            if ($tripay && ($tripay['gateway_mode'] ?? 'owner') === 'owner') {
+            if ($status === 'PAID' && $tripay && ($tripay['gateway_mode'] ?? 'owner') === 'owner') {
                 recordTripayUsageLog((int) $tenantId, (string) $invoiceId, [
                     'gateway_mode' => 'owner',
                     'type' => 'topup',
-                    'status' => $status,
+                    'status' => 'PAID',
                     'amount' => (int) ($topup->nominal ?? 0),
                     'method' => $data->payment_method ?? ($data->payment_method_code ?? null),
                     'tripay_reference' => $data->reference ?? null,
-                    'paid_at' => $status === 'PAID' ? now() : null,
+                    'paid_at' => now(),
                     'payload' => json_decode($json, true),
                 ]);
             }
