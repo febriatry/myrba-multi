@@ -110,7 +110,7 @@
                             'nama' => 'RBA Lite',
                             'harga' => 110000,
                             'kecepatan' => 'Up to 20 Mbps',
-                            'is_coming_soon' => true,
+                            'is_coming_soon' => false,
                         ],
                         [
                             'nama' => 'RBA Fast',
@@ -156,6 +156,9 @@
                                     style="background-color: #007bff;">
                                     Daftar
                                 </a>
+                                <div class="mt-2 text-muted small">
+                                    <a href="{{ route('syarat-ketentuan') }}" class="text-primary text-decoration-none">Syarat dan ketentuan berlaku</a>
+                                </div>
                             @endif
                         </div>
                     </div>
